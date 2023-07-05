@@ -30,8 +30,15 @@ public:
 
 };
 
+template < typename prob_t >
+bool approx_zero(prob_t x, prob_t eps=1e-7){
+    return std::abs(x - 0) < eps;
+}
+
 
 class PRNG {
+
+    std::random_device rd;
     std::mt19937 gen;
 
     std::uniform_int_distribution<int> int_dist;
@@ -39,10 +46,13 @@ class PRNG {
     std::uniform_real_distribution<double> prob_dist{0.0, 1.0};
 
 public:
-    PRNG(Seeder& seeder){
-        gen.seed( seeder.get_seed() );
+    PRNG(){
+        gen.seed( rd() );
     }
 
+    void seed(){
+        gen.seed( rd() );
+    }
     void seed(unsigned seed){
         gen.seed( seed );
     }
@@ -60,19 +70,21 @@ public:
         return static_cast< prob_t >(prob_dist(gen));
     }
 
-    template< typename prob_t, template < typename > class prob_vector_t > 
-    size_t sampleProbDistribution( const prob_vector_t< prob_t > &pv){
+    // sample from distribution container (no validation) //
+    template< typename state_t,
+              typename prob_t, 
+              template < typename, typename > class prob_map_t > 
+    state_t sample_distribution( const prob_map_t< state_t, prob_t > &pm){
+
         prob_t p = rand_probability< prob_t >();
         prob_t zero = 0;
-        size_t idx = 0;
         
-        for (prob_t elem : pv){
-            p -= elem; 
-            if (approx_zero(p)) { return idx; }
-            idx++;
+        for (const auto &[state, prob] : pm){
+            p -= prob; 
+            if (approx_zero(p)) { return state; }
         }
 
-        return idx;
+        return 0;
     }
 
     int rand_int(int min, int max){
@@ -86,10 +98,6 @@ public:
 };
 
 
-template < typename prob_t >
-bool approx_zero(prob_t x, prob_t eps=1e-7){
-    return std::abs(x - 0) < eps;
-}
 
 
 
