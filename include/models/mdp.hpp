@@ -3,13 +3,7 @@
 #include <vector>
 #include "models/environment.hpp"
 #include "utils/prng.hpp"
-#include "Eigen/Core"
-#include "Eigen/SparseCore"
-
-using Matrix2D = Eigen::SparseMatrix< double, 
-                                Eigen::RowMajor >;
-
-using Matrix3D = std::vector< Matrix2D >;
+#include "utils/eigentypes.hpp"
 
 template < typename reward_t >
 class MDP : public Environment< size_t, size_t , reward_t > {
@@ -92,8 +86,12 @@ public:
         return reward_bounds;
     }
 
-    reward_t get_expected_reward(size_t state, size_t action){
+    reward_t get_reward(size_t state, size_t action) override{
         return rewards.coeffRef(state, action);
+    }
+
+    size_t get_current_state() const override {
+        return current_state;
     }
 
 
@@ -106,7 +104,7 @@ public:
         // get iterator to probabilities of successor states
         Matrix2D::InnerIterator it(transitions[current_state], action);
 
-        reward_t reward = get_expected_reward(current_state, action);
+        reward_t reward = get_reward(current_state, action);
 
         // index of successor state in sparse matrix row 
         size_t next_state = gen.sample_distribution(get_transition(current_state, action));
