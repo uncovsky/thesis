@@ -6,7 +6,9 @@
 int main(){
 
     Eigen::SparseMatrix<double, Eigen::RowMajor> sex;
-    MDP<size_t> ahoj;
+    MDP<int> ahoj;
+
+    EnvironmentWrapper< size_t, size_t, int, int> env_wrap(&ahoj);
 
     auto [s, a, r, succ] = ahoj.reset(10);
 

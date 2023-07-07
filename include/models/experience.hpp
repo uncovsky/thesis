@@ -26,14 +26,14 @@ class StateRecord{
 
 public:
     StateRecord() : 
-                    q_records({})    , 
-                    visit_counts({}) ,
+                    q_records()    , 
+                    visit_counts() ,
                     visit_count(0) 
                                         {}
 
     StateRecord(action_t action) : 
-                    q_records({})    , 
-                    visit_counts({}) ,
+                    q_records()    , 
+                    visit_counts() ,
                     visit_count(0) 
                                         {
                                             init_record(action);
@@ -78,10 +78,10 @@ class EnvironmentWrapper{
 
 public:
 
-    EnvironmentWrapper() : env(nullptr), records({}) {}
-    EnvironmentWrapper(Environment< state_t, action_t, reward_t > *env) : env(env), records({}) {}
+    EnvironmentWrapper() : env(nullptr), records() {}
+    EnvironmentWrapper(Environment< state_t, action_t, reward_t > *env) : env(env), records() {}
 
-    using typename Environment< state_t, action_t, reward_t > :: Observation;
+    using Observation = typename Environment< state_t, action_t, reward_t > :: Observation;
 
     state_t get_current_state() const{
         return env->get_current_state();
