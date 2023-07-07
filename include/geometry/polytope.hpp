@@ -1,4 +1,5 @@
 #include <vector>
+#include "utils/geometry_utils.hpp"
 
 
 
@@ -10,18 +11,23 @@ class Halfspace {
     // normal vector of the hyperplane
     std::vector < value_t > normal_vec;
 
-    // how far away from the hyperplane does the space start
+    // euclidean distance from the hyperplane
     value_t distance_diff; 
 
 public:
-    Halfspace(std::vector< value_t > normal_vec, value_t distance, bool positive_side=true) : 
+    Halfspace( const std::vector< value_t > &normal_vec, 
+               value_t distance) : 
             normal_vec(normal_vec), distance_diff(distance_diff) {}
 
     
-    value_t distance( std::vector< value_t > point ) const {
-          
+    value_t distance( const std::vector< value_t > &point ) const {
+        value_t dist = dot_product( point, normal_vec ) / norm(normal_vec);
+        return std::max(0, dist - distance_diff);
     }
-            
+
+    bool on_frontier( const std::vector< value_t > &point ) const{
+        return dot_product( point, normal_vec ) == distance_diff;
+    } 
 };
 
 
