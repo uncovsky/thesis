@@ -1,4 +1,6 @@
 #include <vector>
+#include <set>
+#include <algorithm>
 #include "utils/geometry_utils.hpp"
 
 
@@ -43,3 +45,32 @@ class Polytope {
     // vertices of the polytope (intersections of the halfspaces)
     std::vector< value_t > points;
 };
+
+
+// checks whether lhs is strictly non dominated by vector rhs
+// if not true we don't want to insert into the set
+template < typename value_t >
+bool strictly_non_dominated( const std::vector< value_t > &lhs, 
+                             const std::vector< value_t > &rhs ) {
+    bool not_dominated = true;
+    bool neq = true;
+    for ( size_t i = 0; i < lhs.size(); i++ ) {
+        not_dominated &= lhs[i] >= rhs[i];
+        neq &= lhs[i] != rhs[i];
+    }
+
+    return not_dominated & neq;
+}
+
+template < typename value_t > 
+std::set< std::vector< value_t > > nondominated_union( const std::set< std::vector< value_t > > &lhs,
+                                                       const std::set< std::vector< value_t > > &rhs ) {
+    std::set< std::vector< value_t > > res;
+
+    std::set_union(lhs.cbegin(), lhs.cen(), 
+                   rhs.cbegin(), rhs.cend(),
+                   std::inserter(res, res.begin()),
+                   [](const auto &x, const auto &y){ return !strictly_not_dominated(x, y); });
+
+    return res;
+}
