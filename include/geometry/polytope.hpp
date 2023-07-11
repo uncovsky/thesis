@@ -6,71 +6,103 @@
 
 
 /* represents a half space determined by a normal vector of a hyperplane + a
- * distance from it (in the direction of the normal vector) */ 
+ * max dot product from it (distance_diff) */
 template < typename value_t > 
 class Halfspace {
 
     // normal vector of the hyperplane
     std::vector < value_t > normal_vec;
 
-    // euclidean distance from the hyperplane
-    value_t distance_diff; 
+    // max dot product with 
+    value_t max_distance; 
 
 public:
     Halfspace( const std::vector< value_t > &normal_vec, 
                value_t distance) : 
-            normal_vec(normal_vec), distance_diff(distance_diff) {}
+            normal_vec(normal_vec), max_distance(max_distance) {}
 
     
     value_t distance( const std::vector< value_t > &point ) const {
         value_t dist = dot_product( point, normal_vec ) / norm(normal_vec);
-        return std::max(0, dist - distance_diff);
+        return std::max(0, dist - max_distance);
     }
 
-    bool on_frontier( const std::vector< value_t > &point ) const{
-        return dot_product( point, normal_vec ) == distance_diff;
+    bool on_boundary( const std::vector< value_t > &point ) const{
+        return dot_product( point, normal_vec ) == max_distance;
     } 
 };
 
 
-/* represents a d-dimensional polytope as an intersection of 
+/* represents a convex d-dimensional polytope as an intersection of 
  * given half spaces */ 
 
 template < typename value_t > 
 class Polytope {
 
+    typedef std::vector< value_t > Point;
+
     // halfspaces that form the polytope
     std::vector< Halfspace< value_t > > halfspaces;
     
     // vertices of the polytope (intersections of the halfspaces)
-    std::vector< value_t > points;
+    std::vector< Point > points;
 };
 
 
-// checks whether lhs is strictly non dominated by vector rhs
-// if not true we don't want to insert into the set
+template < typename value_t >
+bool is_dominated( const std::vector< value_t > &lhs, 
+                   const std::vector< value_t > &rhs ) {
+    bool dominates_i = false;
+    bool dominated_i = false;
+    for (size_t i = 0; i < lhs.size(); i++){
+        if (rhs[i] < lhs[i]) 
+            dominates_i = true;
+        else if (lhs[i] < rhs[i])
+            dominated_i = true;
+    }
+
+    return dominated_i && !dominates_i;
+}
+
+
 template < typename value_t >
 bool strictly_non_dominated( const std::vector< value_t > &lhs, 
                              const std::vector< value_t > &rhs ) {
-    bool not_dominated = true;
-    bool neq = true;
-    for ( size_t i = 0; i < lhs.size(); i++ ) {
-        not_dominated &= lhs[i] >= rhs[i];
-        neq &= lhs[i] != rhs[i];
-    }
-
-    return not_dominated & neq;
+    return !is_dominated(lhs, rhs) && lhs != rhs;
 }
 
+
+// brute force to remove dominated points from the input set
+// todo a bit smarter
+template < typename value_t >
+void remove_dominated( std::set< std::vector< value_t > > &input){
+
+    std::vector< std::vector< value_t> > nondominated_elems;
+
+    for (auto it = input.begin(); it != input.end();){
+
+        bool dominated = false;
+
+        for (auto it_dom = input.begin(); it_dom != input.end(); ++it_dom){
+            if (is_dominated(*it, *it_dom)){
+                dominated = true;
+                break;
+            }
+        }
+
+        if (dominated) { it = input.erase(it); }
+        else { ++it; }
+    }
+}
+
+// ND(union of lhs and rhs)
+// for update rule in pql
 template < typename value_t > 
-std::set< std::vector< value_t > > nondominated_union( const std::set< std::vector< value_t > > &lhs,
+void nondominated_union( std::set< std::vector< value_t > > &lhs,
                                                        const std::set< std::vector< value_t > > &rhs ) {
-    std::set< std::vector< value_t > > res;
 
-    std::set_union(lhs.cbegin(), lhs.cen(), 
+    std::set_union(lhs.cbegin(), lhs.cend(), 
                    rhs.cbegin(), rhs.cend(),
-                   std::inserter(res, res.begin()),
-                   [](const auto &x, const auto &y){ return !strictly_not_dominated(x, y); });
-
-    return res;
+                   std::inserter(lhs, lhs.begin()));
+    remove_dominated(lhs);
 }
