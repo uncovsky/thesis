@@ -13,7 +13,9 @@ template < typename state_t, typename action_t, typename reward_t >
 class Environment{
 
 public:
-    using Observation = std::tuple< state_t, reward_t, bool, bool >;
+    // state after executing the step, reward value, 
+    // and whether the state is terminal
+    using Observation = std::tuple< state_t, reward_t, bool >;
 
     // get bounds on reward function
     virtual std::pair< reward_t, reward_t > reward_range() const = 0;

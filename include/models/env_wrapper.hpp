@@ -4,7 +4,7 @@
 #include <sstream>
 #include <algorithm>
 #include "models/environment.hpp"
-#include "utils/eigentypes.hpp"
+#include "utils/eigen_types.hpp"
 
 /* records statistics about given state 
  * record_obj_t is the type of record object kept for every state action pair
@@ -28,17 +28,15 @@ public:
     StateRecord() : 
                     q_records()    , 
                     visit_counts() ,
-                    visit_count(0) 
-                                        {}
+                    visit_count(0) {}
 
     StateRecord(action_t action) : 
-                    q_records()    , 
-                    visit_counts() ,
-                    visit_count(0) 
-                                        {
-                                            init_record(action);
-                                            visit(action);
-                                        }
+                                   q_records()    , 
+                                   visit_counts() ,
+                                   visit_count(0) {
+                                                      init_record(action);
+                                                      visit(action);
+                                                  }
 
     size_t get_visit_count() const{
         return visit_count;
