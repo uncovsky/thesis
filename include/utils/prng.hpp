@@ -8,14 +8,14 @@
 class PRNG {
 
     std::random_device rd;
-    std::mt19937 gen;
+    std::mt19937 gen{ std::random_device{}() };
 
     std::uniform_int_distribution<int> int_dist;
     std::uniform_real_distribution<double> float_dist; 
     std::uniform_real_distribution<double> prob_dist{ 0.0, 1.0 };
 
 public:
-    PRNG() {
+    PRNG() : rd(), gen() {
         gen.seed( rd() );
     }
 
@@ -47,10 +47,10 @@ public:
 
         prob_t p = rand_probability< prob_t >();
         prob_t zero = 0;
-        
+
         for ( const auto &[ state, prob ] : pm ) {
             p -= prob; 
-            if ( approx_zero( p ) ) { return state; }
+            if ( ( p < 0 ) || ( approx_zero( p ) ) ) { return state; }
         }
 
         return 0;

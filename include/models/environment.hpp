@@ -6,9 +6,10 @@
 #include <map>
 
 /* 
- *  General environment interface implementing to GymRL API for easy benchmarking
- *      
+ *  general environment interface to use when interacting with the solver
+ *  (through environment handler object)
  */
+
 template < typename state_t, typename action_t, typename reward_t >
 class Environment{
 
@@ -30,13 +31,10 @@ public:
 
     virtual Observation step(action_t) = 0;
 
-    // enable potential randomisation of the env, 0 signals default random init
+    // enable potential reseeding of the envs prng, 0 signals default random init
     virtual Observation reset(unsigned seed=0) = 0;
 
     virtual std::string name() const = 0;
 
-    // todo later maybe
-    // virtual void make_checkpoint(size_t id) = 0;
-    // virtual void restore_checkpoint(size_t id) = 0;
 };
 

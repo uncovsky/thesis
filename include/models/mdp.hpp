@@ -42,7 +42,8 @@ public:
             reward_models() ,
             reward_bounds( { reward_vec(), reward_vec() } ) ,
             initial_state( 0 )  ,
-            current_state( 0 ) {}
+            current_state( 0 ) ,
+            gen(){}
 
 
 
@@ -52,7 +53,8 @@ public:
               reward_models( rewards ) ,
               reward_bounds( reward_bounds ) ,
               initial_state( s ) ,
-              current_state( s ) {}
+              current_state( s ) ,
+              gen(){}
 
 
     // move constructor
@@ -62,7 +64,8 @@ public:
               reward_models( std::move(rewards) ) ,
               reward_bounds( reward_bounds ) ,
               initial_state( s ) ,
-              current_state( s ) {}
+              current_state( s ) ,
+              gen(){}
 
 
     std::vector< size_t > get_actions( size_t state ) const override {
@@ -150,9 +153,6 @@ public:
 
     Observation step( size_t action ) override {
 
-        // get iterator to probabilities of successor states
-        Matrix2D<double>::InnerIterator it( transitions[current_state], action );
-
         reward_vec reward = get_reward( current_state, action );
 
         // index of successor state in sparse matrix row 
@@ -167,7 +167,7 @@ public:
 
     Observation reset( unsigned seed ) override{
 
-        if ( seed = 0 ) {  gen.seed(); }
+        if ( seed == 0 ) {  gen.seed(); }
         else            {  gen.seed( seed ); }
         
         current_state = initial_state;

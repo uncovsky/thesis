@@ -10,7 +10,8 @@ int main(){
     Matrix3D< double > transitions;
 
 
-    // add 1 by 1 matrices
+    // add two matrices (state transitions)
+    transitions.push_back( Matrix2D< double >( 2, 2 ) );
     transitions.push_back( Matrix2D< double >( 2, 2 ) );
     rewards.push_back( Matrix2D< int >( 2, 2 ) );
 
@@ -19,10 +20,11 @@ int main(){
     transitions[0].coeffRef( 0, 0 ) = 0.5;
     transitions[0].coeffRef( 0, 1 ) = 0.5;
     transitions[0].coeffRef( 1, 1 ) = 1.0;
+    transitions[1].coeffRef( 1, 1 ) = 1.0;
 
     rewards[0].coeffRef( 0, 0 ) = 1;
-    rewards[0].coeffRef( 0, 1 ) = 0;
-    rewards[0].coeffRef( 1, 1 ) = 2;
+    rewards[0].coeffRef( 0, 1 ) = 2;
+    rewards[0].coeffRef( 1, 0 ) = 0;
 
     // third argument is the reward bounds, just placeholders right now
     MDP<int> mdp( transitions,
@@ -35,9 +37,19 @@ int main(){
     EnvironmentWrapper< size_t, size_t, std::vector<int>, int> env_wrap( &mdp );
 
 
-    // sanity checks, todo some actual tests, and fix mdp step function so it works
-    // properly
-    auto [ s, r, end ] = mdp.reset(0);
+    // sanity checks, todo some actual tests
+    auto [ s, r, termination ] = mdp.reset(2380);
+
+    size_t i = 1;
+    while (!termination){
+        auto res = mdp.step(0);
+        s = std::get<0>(res);
+        r = std::get<1>(res);
+        termination = std::get<2>(res);
+
+        std::cout << "step " << i++ << " curr state: " << s << " terminated: " << termination << "\n";
+    }
+
 
     std::vector< size_t > actions = mdp.get_actions(0);
 
@@ -46,7 +58,14 @@ int main(){
         std::cout << act << " ";
     }
 
-    std::cout << "state: " << s << " terminated: " << end << " reward: ";
+    std::map < size_t, double > succ = mdp.get_transition( 0, 1 );
+
+    std::cout << "Available transitions from state 0 under action 1: \n";
+    for ( auto [ s, p ] : succ ) {
+        std::cout << "state " << s << " with prob " << p << std::endl;
+    }
+
+    std::cout << "state: " << s << " terminated: " << termination << " reward: ";
     for ( const auto& x : r ){
         std::cout << x << ", ";
     }
