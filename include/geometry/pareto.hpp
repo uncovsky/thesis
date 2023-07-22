@@ -47,14 +47,14 @@ void remove_dominated( std::set< std::vector< value_t > > &input){
 
         bool dominated = false;
 
-        for (auto it_dom = input.begin(); it_dom != input.end(); ++it_dom) {
-            if (is_dominated(*it, *it_dom)) {
+        for ( auto it_dom = input.begin(); it_dom != input.end(); ++it_dom ) {
+            if ( is_dominated( *it, *it_dom ) ) {
                 dominated = true;
                 break;
             }
         }
 
-        if (dominated) { it = input.erase(it); }
+        if ( dominated ) { it = input.erase(it); }
         else { ++it; }
     }
 }

@@ -31,12 +31,12 @@ public:
                     visit_count(0) {}
 
     StateRecord(action_t action) : 
-                                   q_records()    , 
-                                   visit_counts() ,
-                                   visit_count(0) {
-                                                      init_record(action);
-                                                      visit(action);
-                                                  }
+                    q_records()    , 
+                    visit_counts() ,
+                    visit_count(0) {
+                                       init_record(action);
+                                        visit(action);
+                                    }
 
     size_t get_visit_count() const{
         return visit_count;
@@ -76,59 +76,64 @@ class EnvironmentWrapper{
 
 public:
 
-    EnvironmentWrapper() : env(nullptr), records() {}
-    EnvironmentWrapper(Environment< state_t, action_t, reward_t > *env) : env(env), records() {}
+    EnvironmentWrapper() : env( nullptr ), records() {}
+    EnvironmentWrapper( Environment< state_t, action_t, reward_t > *env ) : env( env ), records() {}
 
     using Observation = typename Environment< state_t, action_t, reward_t > :: Observation;
 
-    state_t get_current_state() const{
+    state_t get_current_state() const {
         return env->get_current_state();
     }
 
     std::vector< action_t > get_actions() const {
-        return env->get_actions(get_current_state());
+        return env->get_actions( get_current_state() );
     }
 
-    std::vector< action_t > get_actions(state_t state) const {
-        return env->get_actions(state);
+    std::map< state_t, double > get_transition(state_t state, action_t action) const {
+        return env->get_transition( state, action );
     }
 
-    reward_t get_expected_reward(state_t s, action_t a){
-        return env->get_reward(s, a);
+    std::vector< action_t > get_actions( state_t state ) const {
+        return env->get_actions( state );
     }
 
-    reward_t get_expected_reward(state_t s, action_t a, state_t succ_s){
-        return env->get_reward(s, a);
+    reward_t get_expected_reward( state_t s, action_t a ) {
+        return env->get_reward( s, a );
+    }
+
+    reward_t get_expected_reward( state_t s, action_t a, state_t succ_s ) {
+        return env->get_reward( s, a );
     }
 
     void clear_records(){
         records.clear();
     }
     
-    Observation reset(unsigned seed=0, bool reset_records=true){
+    Observation reset( unsigned seed=0, bool reset_records=true ) {
         if (reset_records) { clear_records(); }
-        return env->reset(seed);
+        return env->reset( seed );
     }
 
-    Observation step(action_t action){
-        auto [current_state, _, reward, succ_state] = env->step(action);
+    Observation step( action_t action ) {
+        state_t current_state = get_current_state();
+        auto [ next_state, reward, terminated ] = env->step( action );
 
         // if the record is found, modify it
-        if (auto it = records.find(current_state); it == records.end()){
-            if (it->get_visit_count(action) == 0) { it->init_record(action); }
-            it->visit(action);
+        if ( auto it = records.find( current_state ); it == records.end() ) {
+            if ( it->get_visit_count( action ) == 0 ) { it->init_record( action ); }
+            it->visit( action );
         }
         
         else{
-            record_t new_record(action);
-            records.emplace( current_state, std::move(new_record) );
+            record_t new_record( action );
+            records.emplace( current_state, std::move( new_record ) );
         }
         
-        return { current_state, action, reward, succ_state };
+        return { next_state , reward, terminated };
     }
 
-     record_ptr get_record(state_t state, action_t action){
-         if (auto it = records.find[state]; it != records.end()){
+    record_ptr get_record( state_t state, action_t action ) {
+         if ( auto it = records.find[state]; it != records.end() ) {
              return it->get_record_ptr(action);
          }
          return nullptr;
