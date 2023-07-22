@@ -16,6 +16,8 @@ class BRTDPSolver{
     Environment env;
     PRNG gen;
 
+    std::vector< double > discount_params;
+
     enum class StateSelectionHeuristic { Hypervolume, Pareto, Uniform };
     enum class ActionSelectionHeuristic { BRTDP, Uniform, RoundRobin };
 
@@ -63,5 +65,10 @@ class BRTDPSolver{
         }
         
     }
-    
+
+public:
+   BRTDPSolver( Environment &&env, const std::vector< double > discount_params ) : env( std::move( env ) ) ,
+                                    gen(  ) ,
+                                    discount_params( discount_params ) {}
+
 };
