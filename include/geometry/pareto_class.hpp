@@ -1,8 +1,12 @@
 # pragma once 
+
 # include <vector>
 # include <algorithm> 
+# include <fstream>
 # include <set>
+# include <string>
 # include "utils/geometry_utils.hpp"
+# include "geometry/pareto.hpp"
 
 
 /*
@@ -56,9 +60,12 @@ public:
     }
 
     void scalar_multiply( value_t mult ) {
-        for ( Point &p : vertices ) {
-            p = multiply( mult, p );
+        std::set< Point > new_vertices;
+        for ( const Point &p : vertices ) {
+            new_vertices.insert( multiply( mult, p ) );
         }    
+
+        vertices = new_vertices;
     }
 
     // this := minkowski sum of this and rhs
@@ -123,6 +130,16 @@ public:
             new_facets.emplace_back( facet_x, max_x_point );
             new_facets.emplace_back( facet_y, max_y_point );
 
+        }
+    }
+
+    void write_to_file( std::string filename ) {
+        std::ofstream str( filename, std::ios::out );
+        for ( const auto &vert : vertices ) {
+            for ( value_t val : vert ) {
+                str << val << ";";
+            }
+            str << "\n";
         }
     }
 };

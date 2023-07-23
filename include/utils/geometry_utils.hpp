@@ -27,7 +27,7 @@ value_t dot_product( const std::vector< value_t > &lhs ,
 
 template < typename value_t > 
 std::vector< value_t > multiply( value_t scalar, 
-                                 const std::vector< value_t > vec ) {
+                                 const std::vector< value_t > &vec ) {
     std::vector< value_t > res( vec ); 
     for ( value_t &elem : res ){
         elem *= scalar;
@@ -37,8 +37,8 @@ std::vector< value_t > multiply( value_t scalar,
 }
 
 template < typename value_t > 
-std::vector< value_t > add( const std::vector< value_t > lhs, 
-                            const std::vector< value_t > rhs ) {
+std::vector< value_t > add( const std::vector< value_t > &lhs, 
+                            const std::vector< value_t > &rhs ) {
     assert ( lhs.size() == rhs.size() );
     std::vector< value_t > res( lhs ); 
 
@@ -50,8 +50,8 @@ std::vector< value_t > add( const std::vector< value_t > lhs,
 }
 
 template < typename value_t > 
-std::vector< value_t > subtract( const std::vector< value_t > lhs, 
-                                 const std::vector< value_t > rhs ) {
+std::vector< value_t > subtract( const std::vector< value_t > &lhs, 
+                                 const std::vector< value_t > &rhs ) {
     assert ( lhs.size() == rhs.size() );
     std::vector< value_t > res( lhs ); 
 
@@ -63,7 +63,7 @@ std::vector< value_t > subtract( const std::vector< value_t > lhs,
 }
 
 template < typename value_t > 
-std::vector< value_t > norm( const std::vector< value_t > lhs ) {
+std::vector< value_t > norm( const std::vector< value_t > &lhs ) {
 
     return multiply( 1/dot_product( lhs, lhs ), lhs );
 }

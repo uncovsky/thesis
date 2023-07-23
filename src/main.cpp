@@ -87,5 +87,11 @@ int main(){
             std::cout << y;
         std::cout << "\n";
     }
+
+    ParetoCurve<double> pc( { { 0, 1 }, {1, 0}, {0.5, 0.5}, {0.75, 0.25} } );
+    ParetoCurve<double> copy(pc);
+    copy.scalar_multiply( 0.25 );
+    pc.add_curve(copy);
+    pc.write_to_file("pareto_test.txt");
         
 }
