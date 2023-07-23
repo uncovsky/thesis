@@ -1,5 +1,6 @@
 #include "models/mdp.hpp"
 #include "solvers/brtdp.hpp"
+#include "geometry/pareto_class.hpp"
 #include "models/env_wrapper.hpp"
 #include <iostream>
 #include "geometry/pareto.hpp"
