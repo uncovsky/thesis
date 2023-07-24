@@ -1,6 +1,6 @@
 #include "models/mdp.hpp"
 #include "solvers/brtdp.hpp"
-#include "geometry/pareto_class.hpp"
+#include "geometry/polygon.hpp"
 #include "models/env_wrapper.hpp"
 #include <iostream>
 #include "geometry/pareto.hpp"
@@ -88,10 +88,11 @@ int main(){
         std::cout << "\n";
     }
 
-    ParetoCurve<double> pc( { { 0, 1 }, {1, 0}, {0.5, 0.5}, {0.75, 0.25} } );
-    ParetoCurve<double> copy(pc);
-    copy.scalar_multiply( 0.25 );
-    pc.add_curve(copy);
+    Polygon<double> pc( { { 0, 1 }, {1, 0}, {1, 1}, {0, 0}, {0.5, 0.5}, {0.25, 0.75}, {0.3, 0.7} } );
+    // copy.scalar_multiply( 0.25 );
+    // pc.add_curve(copy);
+    pc.write_to_file("pareto_before.txt");
+    pc.convex_hull();
     pc.write_to_file("pareto_test.txt");
         
 }
