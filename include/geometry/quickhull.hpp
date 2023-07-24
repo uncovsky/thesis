@@ -7,18 +7,24 @@
  */
 
 
-// get convex hull of a set of points (only works for 2D sofar)
+// get convex hull of a set of points (only works for 2D so far)
 template < typename value_t >
 std::vector< Point< value_t > > quickhull( const std::set< Point< value_t > > &points,
                                            double eps = 1e-10 ) {
     if ( points.empty() )
         return {};
 
-    auto [ min_it, max_it ] = std::minmax_element( points.begin(), points.end(), std::less< std::vector< value_t > > () );
+    // get lexicographical min/max elements
+    auto [ min_it, max_it ] = std::minmax_element( points.begin(), 
+                                                   points.end(), 
+                                                   std::less< std::vector< value_t > > () );
+
 
     Point<value_t> min_x = *min_it, max_x = *max_it;
-
     std::vector< Point< value_t > > result;
+
+
+    // select & connect two extremal points with a line segment
     LineSegment< value_t > line( min_x, max_x );
 
     std::set< Point< value_t > > left_pts, right_pts;
@@ -30,6 +36,7 @@ std::vector< Point< value_t > > quickhull( const std::set< Point< value_t > > &p
         else if ( ccw_res > eps )  { left_pts.insert(p); }
     }
 
+    // the two extremal points lie on the hull, investigate others recursively
     result.push_back( min_x );
     quickhull_rec( result, left_pts, LineSegment< value_t >( { min_x, max_x } ) );
 
@@ -49,8 +56,8 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
     if ( points.empty() )
         return;
 
-    // find furthest point away from the line segment, this point is definitely
-    // in the convex hull
+    // find furthest point away from the line segment, this point is 
+    // on the convex hull as well
     Point< value_t > farthest_pt = *(points.begin());
     value_t max_dist = line.point_distance( farthest_pt );
 
@@ -70,7 +77,8 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
 
     // again, sort points based on their halfspaces
     // we only care about points outside of the triangle formed by the line
-    // segment and the farthest point 
+    // segment and the farthest point, since others are already encompassed in
+    // the convex hull
     for ( const auto &p : points ) {
         double ccw_res_left = ccw( l , farthest_pt, p ) ;
         double ccw_res_right = ccw( farthest_pt, r,  p ) ;

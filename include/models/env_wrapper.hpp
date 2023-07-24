@@ -132,7 +132,7 @@ public:
         return { next_state , reward, terminated };
     }
 
-    record_ptr get_record( state_t state, action_t action ) {
+    record_raw_ptr get_record( state_t state, action_t action ) {
          if ( auto it = records.find[state]; it != records.end() ) {
              return it->get_record_ptr(action);
          }

@@ -12,11 +12,14 @@
 
 
 /*
- * polygon class, which will be used to store
- * the pareto curve for each state-value pair
- * along with updates implemented
- * so far implemented for 1 or 2 dimensions
+ * 2D Polygon class ( or more precisely a collection of points ), 
+ * implemented:
+ * convex hull operation that removes redundant points 
+ * (i.e only keeps vertices of the convex hull) and sets facets (line segments)
+ * for hausdorff distance calculation purposed ( tbd )
  *
+ * downward closure operation that simply adds two facets from extreme points after the
+ * convex hull operation has run
  */
 
 template < typename value_t >
@@ -24,7 +27,6 @@ class Polygon {
 
     // replace with facet later
     // for higher dimensions maybe solve QP for distance?
-    //
     using Point = std::vector< value_t >;
 
     std::set< Point > vertices;
@@ -33,8 +35,13 @@ class Polygon {
 
 public:
 
-    Polygon( const std::set< Point > &v ) : vertices( v ) {  }
-    Polygon( std::set< Point > &&v ) : vertices( std::move( v ) ) {  }
+    Polygon( ) : vertices( ), facets( ) {  }
+
+    Polygon( const std::set< Point > &v ) : vertices( v ),
+                                            facets ( ) {  }
+
+    Polygon( std::set< Point > &&v ) :  vertices( std::move( v ) ), 
+                                        facets (  ){  }
 
 
     std::set< Point > get_vertices( ) const {
@@ -45,17 +52,25 @@ public:
         return vertices;
     }
 
-    void scalar_multiply( value_t mult ) {
+    void multiply_scalar( value_t mult ) {
         std::set< Point > new_vertices;
         for ( const Point &p : vertices ) {
             new_vertices.insert( multiply( mult, p ) );
         }    
 
-        vertices = new_vertices;
+        vertices = std::move( new_vertices );
     }
 
-    // this := minkowski sum of this and rhs
-    void add_curve( const Polygon &rhs ) {
+    void shift_scalar( value_t shift ) {
+        std::set< Point > new_vertices;
+        for ( Point &p : vertices ) {
+            p = add( p, shift );
+        }    
+
+        vertices = std::move( new_vertices );
+    }
+
+    void minkowski_sum( const Polygon &rhs ) {
         std::set< Point > new_vertices;
         std::set< Point > rhs_vertices = rhs.get_vertices();
         for ( const auto &v1 : vertices ) {
@@ -64,7 +79,6 @@ public:
             }
         }
 
-        remove_dominated( new_vertices );
         vertices = new_vertices;
     }
 
@@ -74,7 +88,7 @@ public:
     //  vertices form a convex polygon ( so convex_hull has been called
     //  beforehand )
     // reference point contains minimal values for each objective
-    void downward_closure( Point reference_point ) {
+    void downward_closure( const Point &reference_point ) {
         assert ( reference_point.size() < 3 );
 
         if ( reference_point.size() == 0 )
@@ -92,18 +106,10 @@ public:
 
         else {
 
-            Point max_x_point, max_y_point;
+            auto extreme_points = get_extreme_points( vertices );
 
-            for ( size_t dimension : {0, 1} ) {
-                Point res = *std::max_element( 
-                                  vertices.begin(), vertices.end(),
-                                  [dimension]( const Point& lhs, const Point& rhs) 
-                                            { return lhs[dimension] < rhs[dimension]; } );
-
-                if ( dimension == 1 ) { max_x_point = res; }
-                else                  { max_y_point = res; }
-
-            }
+            Point max_x_point = extreme_points[0].second;
+            Point max_y_point = extreme_points[1].second;
 
             new_facets = std::move( facets );
 
@@ -117,6 +123,8 @@ public:
             new_facets.emplace_back( facet_y, max_y_point );
 
         }
+
+        facets = std::move( new_facets );
     }
 
     void convex_hull() {
@@ -126,7 +134,7 @@ public:
         if ( result.size() > 1 ) {
             for ( size_t i = 0; i < result.size() - 1; i++ ){
                 // vertices are sorted in ccw order
-                new_facets.emplace(  result[i], result[i+1] );
+                new_facets.emplace( result[i], result[i+1] );
             }
 
             new_facets.emplace ( result.back(), result[0] );
