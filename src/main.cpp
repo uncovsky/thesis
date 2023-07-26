@@ -88,7 +88,8 @@ int main(){
         std::cout << "\n";
     }
 
-    Polygon<double> pc( { { 0, 1 }, {1, 0}, {1, 1}, {0, 0}, {0.5, 0.5}, {0.25, 0.75}, {0.3, 0.7} } );
+    // Polygon<double> pc( { { 0, 1 }, {1, 0}, {1, 1}, {0, 0}, {0.5, 0.5}, {0.25, 0.75}, {0.3, 0.7} } );
+    Polygon<double> pc( { { 1 }, { 0}, {3}, {5} } );
     // copy.scalar_multiply( 0.25 );
     // pc.add_curve(copy);
     pc.write_to_file("pareto_before.txt");

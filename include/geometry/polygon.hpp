@@ -1,6 +1,7 @@
 # pragma once 
 
 # include <algorithm> 
+# include <iostream>
 # include <fstream>
 # include <set>
 # include <string>
@@ -127,7 +128,40 @@ public:
         facets = std::move( new_facets );
     }
 
+    // hacky solution since points tracked as std::vectors,
+    // could change them to Eigen::Vectors / arrs and template the dims
+    size_t get_dimension() const {
+        if ( vertices.empty() ) 
+            return 0;
+        
+        Point vertex = *( vertices.begin() );
+
+        return vertex.size();
+    }
+
+
+
     void convex_hull() {
+        if ( vertices.empty() )
+            return;
+
+        // handle one dimensional case
+        if ( get_dimension() == 1 ) {
+            auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
+
+            if ( vertices.size() == 1 ) {
+                vertices = { min_x };
+                facets.clear();
+            }
+            else {
+                vertices = { min_x, max_x };
+                facets = { LineSegment< value_t >( min_x, max_x ) };
+            }
+
+            return;
+        }
+        
+
         std::vector< Point > result = quickhull( vertices );
         std::set< LineSegment< value_t > > new_facets;
 

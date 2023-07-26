@@ -1,83 +1,63 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <sstream>
-#include <algorithm>
+#include <set>
+
+#include "geometry/polygon.hpp"
 #include "models/environment.hpp"
 #include "utils/eigen_types.hpp"
 
-/* records statistics about given state 
- * record_obj_t is the type of record object kept for every state action pair
-*  in our case the pareto curve object, but can be anything of interest for the
-*  solver */
 
-template < typename action_t, typename record_obj_t  > 
-class StateRecord{
-    
-    using record_obj_ptr = std::unique_ptr < record_obj_t >;
-    using record_obj_raw_ptr = record_obj_t *;
-    
+/* tracks lower/upper bounds on the objective value */
+template < typename value_t > 
+class Bounds{
 
-    // state action records (S x A)
-    std::map< action_t, record_obj_ptr > q_records; 
-    std::map< action_t, size_t > visit_counts;
-    
-    size_t visit_count;
+    Polygon< value_t > lower_bound;
+    Polygon< value_t > upper_bound;
 
 public:
-    StateRecord() : 
-                    q_records()    , 
-                    visit_counts() ,
-                    visit_count(0) {}
 
-    StateRecord(action_t action) : 
-                    q_records()    , 
-                    visit_counts() ,
-                    visit_count(0) {
-                                       init_record(action);
-                                        visit(action);
-                                    }
+    Bounds ( const std::vector< value_t > &lower_pt, 
+             const std::vector< value_t > &upper_pt ) : lower_bound( { lower_pt } ),
+                                                        upper_bound( { upper_pt } ) {}
 
-    size_t get_visit_count() const{
-        return visit_count;
-    }
-    
-    size_t get_visit_count(action_t action) const{
-        return visit_counts[action];
-    }
-    
-    void visit(action_t action){
-        visit_count++;
-        visit_counts[action]++;
+
+    Polygon< value_t > &lower() {
+        return lower_bound; 
     }
 
-    void init_record(action_t action){
-        q_records.emplace( action, std::make_unique< record_obj_t >() );
+    Polygon< value_t > &upper() {
+        return upper_bound; 
     }
-    
-    record_obj_raw_ptr get_record_ptr(action_t action){
-        return q_records[action].get();
-    }
-
 };
 
-/* this class is used to interact with the underlying environment, recording
- * statistics, simulation, logging, etc. */
 
-template < typename state_t, typename action_t, typename reward_t , typename record_obj_t >
+/* this class is used to interact with the underlying environment, recording
+ * statistics, simulation, logging, etc.
+ * reward_t to the actual reward type ( so std::vector< double > etc. )
+ * while value_t will be equal to double / the templated argument of reward_t */
+
+template < typename state_t, typename action_t, typename reward_t , typename value_t >
 class EnvironmentWrapper{
     
-    using record_t = StateRecord < action_t, record_obj_t >;
-    using record_ptr = std::unique_ptr< record_t >;
-    using record_raw_ptr = record_t *;
+    using bounds_ptr = std::unique_ptr< Bounds< value_t > >;
 
-    Environment< state_t, action_t, reward_t > *env;
-    std::map < state_t, record_ptr > records;
+    Environment< state_t, action_t, reward_t> *env;
+
+    std::vector< value_t > discount_params;
+    std::map < state_t, size_t > visit_count;
+    std::map < std::tuple< state_t, action_t >, bounds_ptr > state_action_bounds;
 
 public:
 
-    EnvironmentWrapper() : env( nullptr ), records() {}
-    EnvironmentWrapper( Environment< state_t, action_t, reward_t > *env ) : env( env ), records() {}
+    EnvironmentWrapper() : env( nullptr ), 
+                           visit_count(), 
+                           state_action_bounds() {}
+    EnvironmentWrapper( Environment< state_t, action_t, reward_t > *env ) : env( env ), 
+                                                                            visit_count(), 
+                                                                            state_action_bounds() {}
 
     using Observation = typename Environment< state_t, action_t, reward_t > :: Observation;
 
@@ -89,7 +69,7 @@ public:
         return env->get_actions( get_current_state() );
     }
 
-    std::map< state_t, double > get_transition(state_t state, action_t action) const {
+    std::map< state_t, double > get_transition( state_t state, action_t action ) const {
         return env->get_transition( state, action );
     }
 
@@ -106,7 +86,30 @@ public:
     }
 
     void clear_records(){
-        records.clear();
+        state_action_bounds.clear();
+        visit_count.clear();
+    }
+
+    void init_bound( state_t s, action_t a ) {
+
+        // get vectors with min values and max values
+        auto [ min, max ] = reward_range();
+
+        // ( 1-\lambda_0, 1-\lambda_1, ... )
+        std::vector< value_t > denominator = add( multiply( -1, discount_params ), 1 );
+        std::vector< value_t > lower_bound_pt = divide( min, denominator );
+        std::vector< value_t > upper_bound_pt = divide( max, denominator );
+        
+        state_action_bounds[std::make_pair( s, a )] = std::make_unique( lower_bound_pt, upper_bound_pt );
+    }
+
+    std::pair< reward_t, reward_t > reward_range() const {
+        return env->reward_range();
+    }
+
+    Bounds< value_t > get_state_bound( state_t s ) {
+        std::vector< action_t > avail_actions = get_actions( s );
+
     }
     
     Observation reset( unsigned seed=0, bool reset_records=true ) {
@@ -116,28 +119,14 @@ public:
 
     Observation step( action_t action ) {
         state_t current_state = get_current_state();
+
+        visit_count[ current_state ]++;
+
         auto [ next_state, reward, terminated ] = env->step( action );
 
-        // if the record is found, modify it
-        if ( auto it = records.find( current_state ); it == records.end() ) {
-            if ( it->get_visit_count( action ) == 0 ) { it->init_record( action ); }
-            it->visit( action );
-        }
-        
-        else{
-            record_t new_record( action );
-            records.emplace( current_state, std::move( new_record ) );
-        }
-        
         return { next_state , reward, terminated };
     }
 
-    record_raw_ptr get_record( state_t state, action_t action ) {
-         if ( auto it = records.find[state]; it != records.end() ) {
-             return it->get_record_ptr(action);
-         }
-         return nullptr;
-    }
 };
 
 
