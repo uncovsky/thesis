@@ -75,12 +75,13 @@ class BRTDPSolver{
 
         result.multiply_bounds( discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
-        set_bounds( s, a, std::move( result ) );
+        env.set_bound( s, a, std::move( result ) );
     }
 
     void update_along_trajectory( TrajectoryStack& trajectory ) {
         while ( !trajectory.empty() ) {
-            auto [ a, successor ] = trajectory.pop();
+            auto [ a, successor ] = trajectory.top();
+            trajectory.pop();
             state_t s = trajectory.empty() ? starting_state : trajectory.top().second;
             update_bounds( s, a );
         }

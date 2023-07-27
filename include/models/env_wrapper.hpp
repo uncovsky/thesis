@@ -6,6 +6,7 @@
 #include <set>
 
 #include "geometry/polygon.hpp"
+#include "geometry/pareto.hpp"
 #include "models/environment.hpp"
 #include "utils/eigen_types.hpp"
 
@@ -72,7 +73,6 @@ public:
 
     }
 
-
     void multiply_bounds( value_t mult ) {
         lower_bound.multiply_scalar( mult );
         upper_bound.multiply_scalar( mult );
@@ -86,6 +86,11 @@ public:
     void shift_bounds( value_t shift ) {
         lower_bound.shift_scalar( shift );
         upper_bound.shift_scalar( shift );
+    }
+
+    void shift_bounds( const std::vector< value_t > &shift ) {
+        lower_bound.shift_vector( shift );
+        upper_bound.shift_vector( shift );
     }
     
     value_t bound_distance( std::vector< value_t > ref_point ){
@@ -184,7 +189,7 @@ public:
 
     void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
-       state_action_bounds[ idx ] = std::make_unique( std::move( bound ) );
+       state_action_bounds[ idx ] = std::make_unique< Bounds< value_t > >( std::move( bound ) );
     }
 
     const Bounds< value_t > &get_state_action_bound( state_t s, action_t a ) {

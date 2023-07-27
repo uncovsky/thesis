@@ -18,7 +18,11 @@ template < typename value_t >
 struct LineSegment {
     Point< value_t > x1, x2;
 
-        LineSegment( const Point< value_t >& x1, const Point< value_t >& x2 ) : x1( x1 ), x2( x2 ) {  }
+        LineSegment( const Point< value_t >& _x1, const Point< value_t >& _x2 ) : x1(), x2() { 
+            // order the two points lexicographically
+            x1 = std::min( _x1, _x2 );
+            x2 = std::max( _x1, _x2 );
+        }
 
         value_t point_distance( const Point< value_t >& y ) const {
             
@@ -43,6 +47,11 @@ struct LineSegment {
         bool operator<( const LineSegment &rhs ) const {
             auto [ y1, y2 ] = rhs.get_points();
             return ( x1 < y1 ) || ( ( x1 == y1 ) && ( x2 < y2 ) );
+        }
+
+        bool operator==( const LineSegment &rhs ) const {
+            auto [ y1, y2 ] = rhs.get_points();
+            return ( x1 == y1 ) && ( x2 == y2 );
         }
 };
 

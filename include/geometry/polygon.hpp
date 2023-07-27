@@ -13,11 +13,11 @@
 
 
 /*
- * 2D Polygon class ( or more precisely a collection of points ), 
+ * 2D Convex polygon class ( implemented as a collection of points and
+ * associated facets / line segments )
  * implemented:
  * convex hull operation that removes redundant points 
  * (i.e only keeps vertices of the convex hull) and sets facets (line segments)
- * for hausdorff distance calculation purposed ( tbd )
  *
  * downward closure operation that simply adds two facets from extreme points after the
  * convex hull operation has run
@@ -42,16 +42,36 @@ public:
                                             facets ( ) {  }
 
     Polygon( std::set< Point > &&v ) :  vertices( std::move( v ) ), 
-                                        facets (  ){  }
+                                        facets ( ) {  }
+    Polygon( const std::set< Point > &v,
+             const std::set< LineSegment< value_t > > &f ) : vertices( v ),
+                                                             facets ( f ) {  }
+
+    bool operator==( const Polygon& rhs ) const {
+        bool equal_f = facets == rhs.get_facets();
+        bool equal_v = vertices == rhs.get_vertices();
+
+        return equal_f && equal_v;
+    }
 
 
     const std::set< Point >& get_vertices( ) const {
         return vertices;
     }
 
+    const std::set< LineSegment< value_t > >& get_facets( ) const {
+        return facets;
+    }
+
+    std::set< LineSegment< value_t > >& get_facets( ) {
+        return facets;
+    }
+
     std::set< Point >& get_vertices( ) {
         return vertices;
     }
+
+    /* multiplication & addition, both element-wise and single elements */
 
     void multiply_scalar( value_t mult ) {
         std::set< Point > new_vertices;
@@ -72,6 +92,15 @@ public:
     }
 
     void shift_scalar( value_t shift ) {
+        std::set< Point > new_vertices;
+        for ( Point &p : vertices ) {
+            p = add( p, shift );
+        }    
+
+        vertices = std::move( new_vertices );
+    }
+
+    void shift_vector( const std::vector< value_t > &shift ) {
         std::set< Point > new_vertices;
         for ( Point &p : vertices ) {
             p = add( p, shift );
@@ -110,7 +139,7 @@ public:
 
            // only one nondom vertex is possible 
             if ( !vertices.empty() ) { 
-                new_facets.emplace( vertices[0], reference_point );
+                new_facets.emplace( *(vertices.begin() ), reference_point );
             }
         }
 
