@@ -45,7 +45,7 @@ public:
                                         facets (  ){  }
 
 
-    std::set< Point > get_vertices( ) const {
+    const std::set< Point >& get_vertices( ) const {
         return vertices;
     }
 
@@ -54,6 +54,15 @@ public:
     }
 
     void multiply_scalar( value_t mult ) {
+        std::set< Point > new_vertices;
+        for ( const Point &p : vertices ) {
+            new_vertices.insert( multiply( mult, p ) );
+        }    
+
+        vertices = std::move( new_vertices );
+    }
+
+    void multiply_vector( const Point &mult ) {
         std::set< Point > new_vertices;
         for ( const Point &p : vertices ) {
             new_vertices.insert( multiply( mult, p ) );
@@ -101,7 +110,7 @@ public:
 
            // only one nondom vertex is possible 
             if ( !vertices.empty() ) { 
-                new_facets.emplace_back( vertices[0], reference_point );
+                new_facets.emplace( vertices[0], reference_point );
             }
         }
 
@@ -120,8 +129,8 @@ public:
             Point facet_x = { max_x_point[0], reference_point[1] };
             Point facet_y = { reference_point[0], max_y_point[1] };
 
-            new_facets.emplace_back( facet_x, max_x_point );
-            new_facets.emplace_back( facet_y, max_y_point );
+            new_facets.emplace( facet_x, max_x_point );
+            new_facets.emplace( facet_y, max_y_point );
 
         }
 
@@ -139,8 +148,44 @@ public:
         return vertex.size();
     }
 
+    // precondition: convex hull has been called beforehand, facets are
+    // correctly initialized
+    value_t point_distance( const Point& point ) const {
+        if ( facets.empty() )
+            return 0;
 
+        // handle one dimensional case, 
+        // at most 2 vertices after calling convex_hull()
+        if ( get_dimension() == 1 ) {
+            auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
+            return std::min( min_x[0] - point[0], max_x[0] - point[0] );
+        }
 
+        LineSegment< value_t > first_facet = *( facets.begin() );
+
+        value_t min_distance = first_facet.point_distance( point );
+
+        for ( const auto &ls : facets  ) {
+           min_distance = std::min( min_distance, ls.point_distance( point ) );
+        }
+
+        return min_distance;
+    }
+
+    // computes hausdorff distance of two polygons, assuming *this is contained
+    // in upper_polygon entirely and facets of *this are initialized properly
+    // ( convex hull call preceded this )
+    value_t hausdorff_distance( const Polygon& upper_polygon ) {
+        value_t max_distance = 0;
+
+        for ( const auto &v : upper_polygon.get_vertices() ) {
+            max_distance = std::max( max_distance, point_distance( v ) );
+        }
+        return max_distance;
+    }
+
+    // computes convex hull of vertices, removing all but the vertices forming
+    // the hull. also correctly initializes facets 
     void convex_hull() {
         if ( vertices.empty() )
             return;
@@ -151,13 +196,12 @@ public:
 
             if ( vertices.size() == 1 ) {
                 vertices = { min_x };
-                facets.clear();
             }
             else {
                 vertices = { min_x, max_x };
-                facets = { LineSegment< value_t >( min_x, max_x ) };
             }
 
+            facets.clear();
             return;
         }
         

@@ -19,10 +19,18 @@ class Bounds{
 
 public:
 
-    Bounds ( const std::vector< value_t > &lower_pt, 
-             const std::vector< value_t > &upper_pt ) : lower_bound( { lower_pt } ),
-                                                        upper_bound( { upper_pt } ) {}
+    Bounds () : lower_bound(), upper_bound(){}
 
+    Bounds ( const std::set< std::vector< value_t > > &lower_pts, 
+             const std::set< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
+                                                                    upper_bound( upper_pts ) {}
+    Bounds ( const Polygon< value_t > &lower, 
+             const Polygon< value_t > &upper ) : lower_bound( lower ),
+                                                 upper_bound( upper ) {}
+
+    Bounds ( Polygon< value_t > &&lower, 
+             Polygon< value_t > &&upper ) : lower_bound( std::move( lower ) ),
+                                            upper_bound( std::move( upper ) ) {}
 
     Polygon< value_t > &lower() {
         return lower_bound; 
@@ -30,6 +38,62 @@ public:
 
     Polygon< value_t > &upper() {
         return upper_bound; 
+    }
+
+    const Polygon< value_t > &lower() const {
+        return lower_bound; 
+    }
+
+    const Polygon< value_t > &upper() const {
+        return upper_bound; 
+    }
+
+    void remove_dominated() {
+        remove_dominated( lower_bound.get_vertices() );
+        remove_dominated( upper_bound.get_vertices() );
+    }
+    
+    // joins both bounds with other, which means taking a union of both of the
+    // vertex sets and removing dominated elements
+    void merge_bound( const Bounds< value_t > &other ) {
+        auto low_vertices_rhs = other.lower().get_vertices();
+        auto upp_vertices_rhs = other.upper().get_vertices();
+
+        nondominated_union( lower_bound.get_vertices(), low_vertices_rhs );
+        nondominated_union( upper_bound.get_vertices(), upp_vertices_rhs );
+    }
+
+    // performs a minkowski sum with each respective bound of other
+    void sum_bounds( const Bounds< value_t > &other ){
+        lower_bound.minkowski_sum( other.lower() );
+        upper_bound.minkowski_sum( other.upper() );
+
+        remove_dominated();
+
+    }
+
+
+    void multiply_bounds( value_t mult ) {
+        lower_bound.multiply_scalar( mult );
+        upper_bound.multiply_scalar( mult );
+    }
+
+    void multiply_bounds( const std::vector<value_t> &mult ) {
+        lower_bound.multiply_vector( mult );
+        upper_bound.multiply_vector( mult );
+    }
+
+    void shift_bounds( value_t shift ) {
+        lower_bound.shift_scalar( shift );
+        upper_bound.shift_scalar( shift );
+    }
+    
+    value_t bound_distance( std::vector< value_t > ref_point ){
+        lower_bound.convex_hull();
+        lower_bound.downward_closure( ref_point );
+
+        upper_bound.convex_hull();
+        return lower_bound.hausdorff_distance( upper_bound );
     }
 };
 
@@ -44,7 +108,7 @@ class EnvironmentWrapper{
     
     using bounds_ptr = std::unique_ptr< Bounds< value_t > >;
 
-    Environment< state_t, action_t, reward_t> *env;
+    Environment< state_t, action_t, reward_t > *env;
 
     std::vector< value_t > discount_params;
     std::map < state_t, size_t > visit_count;
@@ -96,11 +160,11 @@ public:
         auto [ min, max ] = reward_range();
 
         // ( 1-\lambda_0, 1-\lambda_1, ... )
-        std::vector< value_t > denominator = add( multiply( -1, discount_params ), 1 );
+        std::vector< value_t > denominator = add( multiply( value_t( -1 ), discount_params ), 1 );
         std::vector< value_t > lower_bound_pt = divide( min, denominator );
         std::vector< value_t > upper_bound_pt = divide( max, denominator );
         
-        state_action_bounds[std::make_pair( s, a )] = std::make_unique( lower_bound_pt, upper_bound_pt );
+        state_action_bounds[std::make_pair( s, a )] = std::make_unique( { lower_bound_pt }, { upper_bound_pt } );
     }
 
     std::pair< reward_t, reward_t > reward_range() const {
@@ -109,7 +173,33 @@ public:
 
     Bounds< value_t > get_state_bound( state_t s ) {
         std::vector< action_t > avail_actions = get_actions( s );
+        Bounds< value_t > result;
+        for ( const action_t &action : avail_actions ) {
+            const Bounds<value_t> &action_bound = get_state_action_bound( s, action );
+            result.merge_bound( action_bound );
+        }
 
+        return result;
+    }
+
+    void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
+       auto idx = std::make_pair( s, a );
+       state_action_bounds[ idx ] = std::make_unique( std::move( bound ) );
+    }
+
+    const Bounds< value_t > &get_state_action_bound( state_t s, action_t a ) {
+
+        auto idx = std::make_pair( s, a );
+
+        if ( state_action_bounds.find( idx ) == state_action_bounds.end() ) {
+            init_bound( s, a );
+        }
+
+        return *state_action_bounds[ idx ];
+    }
+
+    void visit( state_t s ) {
+        visit_count[ s ]++;
     }
     
     Observation reset( unsigned seed=0, bool reset_records=true ) {
@@ -125,6 +215,14 @@ public:
         auto [ next_state, reward, terminated ] = env->step( action );
 
         return { next_state , reward, terminated };
+    }
+
+    void write_statistics(){
+
+        std::cout << "States visited during a trajectory: " << visit_count.size() << "\n";
+
+        std::cout << "States discovered ( in trajectory / updates ): " << state_action_bounds.size() << "\n";
+
     }
 
 };
