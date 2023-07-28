@@ -93,8 +93,8 @@ public:
 
     void shift_scalar( value_t shift ) {
         std::set< Point > new_vertices;
-        for ( Point &p : vertices ) {
-            p = add( p, shift );
+        for ( const Point &p : vertices ) {
+            new_vertices.insert( add( shift, p ) );
         }    
 
         vertices = std::move( new_vertices );
@@ -102,8 +102,8 @@ public:
 
     void shift_vector( const std::vector< value_t > &shift ) {
         std::set< Point > new_vertices;
-        for ( Point &p : vertices ) {
-            p = add( p, shift );
+        for ( const Point &p : vertices ) {
+            new_vertices.insert( add( shift, p ) );
         }    
 
         vertices = std::move( new_vertices );

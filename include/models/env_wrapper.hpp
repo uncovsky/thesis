@@ -4,7 +4,6 @@
 #include <memory>
 #include <sstream>
 #include <set>
-
 #include "geometry/polygon.hpp"
 #include "geometry/pareto.hpp"
 #include "models/environment.hpp"
@@ -49,7 +48,7 @@ public:
         return upper_bound; 
     }
 
-    void remove_dominated() {
+    void nondominated() {
         remove_dominated( lower_bound.get_vertices() );
         remove_dominated( upper_bound.get_vertices() );
     }
@@ -69,7 +68,7 @@ public:
         lower_bound.minkowski_sum( other.lower() );
         upper_bound.minkowski_sum( other.upper() );
 
-        remove_dominated();
+        nondominated();
 
     }
 
@@ -95,8 +94,7 @@ public:
     
     value_t bound_distance( std::vector< value_t > ref_point ){
         lower_bound.convex_hull();
-        lower_bound.downward_closure( ref_point );
-
+        lower_bound.downward_closure( ref_point ); 
         upper_bound.convex_hull();
         return lower_bound.hausdorff_distance( upper_bound );
     }
@@ -164,12 +162,14 @@ public:
         // get vectors with min values and max values
         auto [ min, max ] = reward_range();
 
-        // ( 1-\lambda_0, 1-\lambda_1, ... )
-        std::vector< value_t > denominator = add( multiply( value_t( -1 ), discount_params ), 1 );
+        // ( 1-\lambda_0, 1-\lambda_1, ... ), TODO: change this to something
+        // more sensible, don't use c-style casts
+        std::vector< value_t > denominator = add( value_t( 1 ), multiply( value_t( -1 ), discount_params ) ) ;
         std::vector< value_t > lower_bound_pt = divide( min, denominator );
         std::vector< value_t > upper_bound_pt = divide( max, denominator );
-        
-        state_action_bounds[std::make_pair( s, a )] = std::make_unique( { lower_bound_pt }, { upper_bound_pt } );
+
+        Bounds< value_t > result ( { lower_bound_pt }, { upper_bound_pt } );
+        state_action_bounds.emplace( std::make_pair( std::make_pair( s, a ), std::make_unique< Bounds< value_t > > ( std::move( result ) ) ) );
     }
 
     std::pair< reward_t, reward_t > reward_range() const {
@@ -180,7 +180,7 @@ public:
         std::vector< action_t > avail_actions = get_actions( s );
         Bounds< value_t > result;
         for ( const action_t &action : avail_actions ) {
-            const Bounds<value_t> &action_bound = get_state_action_bound( s, action );
+            Bounds<value_t> action_bound = get_state_action_bound( s, action );
             result.merge_bound( action_bound );
         }
 
@@ -189,10 +189,10 @@ public:
 
     void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
-       state_action_bounds[ idx ] = std::make_unique< Bounds< value_t > >( std::move( bound ) );
+       state_action_bounds.emplace( std::make_pair( idx,  std::make_unique< Bounds< value_t > > ( std::move( bound ) ) ) );
     }
 
-    const Bounds< value_t > &get_state_action_bound( state_t s, action_t a ) {
+    Bounds< value_t > get_state_action_bound( state_t s, action_t a ) {
 
         auto idx = std::make_pair( s, a );
 

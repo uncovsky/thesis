@@ -36,6 +36,17 @@ std::vector< value_t > multiply( value_t scalar,
     return res;
 }
 
+template < typename value_t > 
+std::vector< value_t > add( value_t scalar, 
+                                 const std::vector< value_t > &vec ) {
+    std::vector< value_t > res( vec ); 
+    for ( value_t &elem : res ){
+        elem += scalar;
+    }
+
+    return res;
+}
+
 /* component-wise multiplication */
 template < typename value_t > 
 std::vector< value_t > multiply( const std::vector< value_t > &lhs , 
@@ -44,7 +55,7 @@ std::vector< value_t > multiply( const std::vector< value_t > &lhs ,
     assert( lhs.size() == rhs.size() );
     std::vector< value_t > res( lhs ); 
     for ( size_t i = 0; i < rhs.size(); i++ ){
-        res *= rhs[i];
+        res[i] *= rhs[i];
     }
     return res;
 }
@@ -57,7 +68,7 @@ std::vector< value_t > divide( const std::vector< value_t > &lhs ,
     assert( lhs.size() == rhs.size() );
     std::vector< value_t > res( lhs ); 
     for ( size_t i = 0; i < rhs.size(); i++ ){
-        res /= rhs[i];
+        res[i] /= rhs[i];
     }
     return res;
 }
