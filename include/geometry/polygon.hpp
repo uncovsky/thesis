@@ -112,6 +112,14 @@ public:
     void minkowski_sum( const Polygon &rhs ) {
         std::set< Point > new_vertices;
         std::set< Point > rhs_vertices = rhs.get_vertices();
+
+        if ( rhs_vertices.empty() ) { 
+            return; 
+        }
+        else if ( vertices.empty() ) { 
+            vertices = rhs_vertices;
+            return;
+        }
         for ( const auto &v1 : vertices ) {
             for ( const auto &v2 : rhs_vertices ) {
                 new_vertices.insert( add( v1, v2 ) );
@@ -219,18 +227,20 @@ public:
         if ( vertices.empty() )
             return;
 
-        // handle one dimensional case
+        // handle one dimensional case, facets are just points
         if ( get_dimension() == 1 ) {
             auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
 
             if ( vertices.size() == 1 ) {
                 vertices = { min_x };
+                facets = { LineSegment< value_t > { min_x, min_x } };
             }
             else {
                 vertices = { min_x, max_x };
+                facets = { LineSegment< value_t > { min_x, min_x },
+                           LineSegment< value_t > { max_x, max_x }} ;
             }
 
-            facets.clear();
             return;
         }
         
@@ -238,13 +248,10 @@ public:
         std::vector< Point > result = quickhull( vertices );
         std::set< LineSegment< value_t > > new_facets;
 
-        if ( result.size() > 1 ) {
-            for ( size_t i = 0; i < result.size() - 1; i++ ){
-                // vertices are sorted in ccw order
-                new_facets.emplace( result[i], result[i+1] );
-            }
+        size_t vertex_count = result.size();
 
-            new_facets.emplace ( result.back(), result[0] );
+        for ( size_t i = 0; i < vertex_count; i++ ) {
+            new_facets.emplace( result[i], result[ ( i + 1 ) % vertex_count] );
         }
 
         std::set< Point > new_vertices( result.begin(), result.end() );

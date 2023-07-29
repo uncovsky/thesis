@@ -38,7 +38,7 @@ std::vector< value_t > multiply( value_t scalar,
 
 template < typename value_t > 
 std::vector< value_t > add( value_t scalar, 
-                                 const std::vector< value_t > &vec ) {
+                            const std::vector< value_t > &vec ) {
     std::vector< value_t > res( vec ); 
     for ( value_t &elem : res ){
         elem += scalar;

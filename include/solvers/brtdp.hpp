@@ -7,13 +7,12 @@
 template < typename state_t, typename action_t, typename value_t >
 class BRTDPSolver{
 
-    using Environment = EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t >;
+    using EnvironmentHandle = EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t >;
 
     // implicitly starts from inital state s'
     using TrajectoryStack = std::stack< std::pair< action_t, state_t > >;
 
-    Environment env;
-    state_t starting_state;
+    EnvironmentHandle env;
 
     PRNG gen;
 
@@ -40,7 +39,7 @@ class BRTDPSolver{
 
             // todo implement action selection heuristics (analogous to PQL) 
             // for now just pick first avail one
-            action_t action = actions[0];
+            action_t action = actions[ 0 ];
 
 
             // todo implement successor heuristics, for now just env dynamics
@@ -78,7 +77,7 @@ class BRTDPSolver{
         env.set_bound( s, a, std::move( result ) );
     }
 
-    void update_along_trajectory( TrajectoryStack& trajectory ) {
+    void update_along_trajectory( TrajectoryStack& trajectory, state_t starting_state ) {
         while ( !trajectory.empty() ) {
             auto [ a, successor ] = trajectory.top();
             trajectory.pop();
@@ -91,37 +90,39 @@ class BRTDPSolver{
 
 public:
 
-    BRTDPSolver( const Environment &_env, 
+    // need to move env since it has ownership of solver resources ( bounds )
+    BRTDPSolver( EnvironmentHandle &&_env, 
                  const std::vector< value_t > discount_params,
                  value_t precision ) :  
-                                        env( _env ),
+                                        env( std::move( _env ) ),
                                         gen( ), 
                                         discount_params( discount_params ),
                                         precision( precision )
-                {
-                    starting_state = std::get< 0 > ( env.reset( 0 ) ); // assuming one starting state
-                }
+                { }
 
     void solve( size_t episode_limit, size_t trajectory_limit ) {
 
+        size_t starting_state = std::get< 0 > ( env.reset( 0 ) );
+        env.set_discount_params( discount_params );
         size_t episode = 0;
 
         while ( episode < episode_limit ){
             std::cout << "episode #" << episode << "\n";
             TrajectoryStack trajectory = sample_trajectory( trajectory_limit );
             size_t i = 1;
-            update_along_trajectory( trajectory );
+            update_along_trajectory( trajectory, starting_state );
 
             episode++;
         }
 
-        auto start_bound = env.get_state_bound( starting_state );
+        std::cout << starting_state << std::endl;
+        Bounds< value_t >  start_bound = env.get_state_bound( 0 );
 
         std::cout << "distance: " << start_bound.bound_distance( env.reward_range().first ) << std::endl;
 
         env.write_statistics();
         start_bound.lower().write_to_file( "starting_lower.txt" );
-        start_bound.upper().write_to_file( "starting_lower.txt" );
+        start_bound.upper().write_to_file( "starting_upper.txt" );
     }
 
 };

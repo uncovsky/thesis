@@ -31,7 +31,7 @@ std::vector< Point< value_t > > quickhull( const std::set< Point< value_t > > &p
 
     // sort points based on which halfspace they belong to
     for ( const auto &p : points ) {
-        double ccw_res = ccw( min_x, max_x, p ) ;
+        double ccw_res = line.ccw( p );
         if ( ccw_res < -1 * eps ) { right_pts.insert(p); }
         else if ( ccw_res > eps )  { left_pts.insert(p); }
     }
@@ -72,7 +72,11 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
 
     auto [l, r] = line.get_points();
 
+
     std::set< Point< value_t > > left_pts, right_pts;
+
+    LineSegment< value_t > to_farthest( l, farthest_pt );
+    LineSegment< value_t > from_farthest( farthest_pt, r );
 
 
     // again, sort points based on their halfspaces
@@ -80,8 +84,8 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
     // segment and the farthest point, since others are already encompassed in
     // the convex hull
     for ( const auto &p : points ) {
-        double ccw_res_left = ccw( l , farthest_pt, p ) ;
-        double ccw_res_right = ccw( farthest_pt, r,  p ) ;
+        double ccw_res_left = to_farthest.ccw( p );
+        double ccw_res_right = from_farthest.ccw( p );
 
         if ( ccw_res_left > eps ) { left_pts.insert(p); }
         if ( ccw_res_right > eps ) { right_pts.insert(p); }
