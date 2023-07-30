@@ -4,6 +4,7 @@
 # include <iostream>
 # include <fstream>
 # include <set>
+# include <sstream>
 # include <string>
 
 # include "geometry/geometry.hpp"
@@ -260,8 +261,9 @@ public:
         facets = new_facets;
     }
 
-    void write_to_file( std::string filename ) {
-        std::ofstream str( filename, std::ios::out );
+    std::string to_string( ) const {
+        std::stringstream str;
+
         str << "VERTICES:\n";
         for ( const auto &vert : vertices ) {
             for ( value_t val : vert ) {
@@ -269,7 +271,7 @@ public:
             }
             str << "\n";
         }
-        str << "\n\n\nFACETS:\n";
+        str << "\nFACETS:\n";
         for ( const auto &facet : facets ) {
             auto [x, y] = facet.get_points();
 
@@ -282,6 +284,13 @@ public:
                 str << a << " ";
             str << "\n";
             }
-    
+
+        std::cout << "ahoj" << std::endl;
+        return str.str();
+    }
+
+    void write_to_file( std::string filename ) const {
+        std::ofstream str( filename, std::ios::out );
+        str << to_string();
     }
 };

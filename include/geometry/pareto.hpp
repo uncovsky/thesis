@@ -7,14 +7,13 @@
 
 
 /* several simple helper functions for manipulating points, and sets of points
- * when computing pareto curves, todo - move to associated class representing
- * pareto curve in d-dimensions. 
+ * when computing pareto curves
  *
  * std::vector is used to storm points in storm
  * as well, could also use an Eigen::Array with component-wise ops built in */
 
-
 // checks whether point lhs is pareto dominated by rhs
+
 template < typename value_t >
 bool is_dominated( const std::vector< value_t > &lhs, 
                    const std::vector< value_t > &rhs ) {
@@ -71,4 +70,29 @@ void nondominated_union( std::set< std::vector< value_t > > &lhs,
                     rhs.cbegin(), rhs.cend() ,
                     std::inserter( lhs, lhs.begin() ) );
     remove_dominated( lhs );
+}
+
+
+// returns true if element value is dominated by one in given set, or removes
+// all vertices dominated by it from input_set
+// used in pareto action heuristic
+// input condition : input_set does not contain any dominated vectors (i.e
+// ND(input_set) = input_set )
+template < typename value_t >
+bool pareto_check_remove( const std::vector< value_t > &value,
+                          std::set< std::vector< value_t > > &input_set ) {
+
+    for ( auto it = input_set.begin(); it  < input_set.end(); ){
+
+        // if value is dominated, then from input condition can't dominate any
+        // member of input set, safe to return
+        if ( is_dominated( value, *it ) )
+            return true;
+
+        if ( is_dominated( *it, value ) ){ it = input_set.remove(it); }
+        else  { it++; }
+    
+    }
+
+    return false;
 }

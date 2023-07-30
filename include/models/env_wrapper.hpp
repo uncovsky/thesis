@@ -98,6 +98,12 @@ public:
         upper_bound.convex_hull();
         return lower_bound.hausdorff_distance( upper_bound );
     }
+
+    friend std::ostream &operator<<( std::ostream& os, const Bounds< value_t > &b ) {
+        os << "lower bound:\n" << b.lower().to_string() << "\n";
+        os << "upper bound:\n" << b.upper().to_string() << "\n";
+        return os;
+    }
 };
 
 
@@ -194,6 +200,24 @@ public:
         }
     }
 
+    bool is_terminal_state( state_t state ) const {
+        std::vector< action_t > avail_actions = get_actions( state );
+        for ( size_t action : avail_actions ) {
+
+            auto transitions = get_transition( state, action );
+
+            if ( 
+                 ( transitions.size() > 1 ) || 
+                 ( !approx_equal( transitions[state], 1.0 ) )
+               )
+                 {
+                    return false;
+                 }
+        }
+        
+        return true;
+    }
+
     Bounds< value_t > get_state_bound( state_t s ) {
         discover( s );
         std::vector< action_t > avail_actions = get_actions( s );
@@ -212,12 +236,16 @@ public:
         auto idx = std::make_pair( s, a );
         return *state_action_bounds[ idx ];
     }
+
+    const Bounds< value_t > &get_state_action_bound( state_t s, action_t a ) const{
+        auto idx = std::make_pair( s, a );
+        return *state_action_bounds[ idx ];
+    }
    
 
     void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
        state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( bound );
-
     }
 
     void set_discount_params( const std::vector< value_t > gammas ) {
@@ -228,6 +256,7 @@ public:
         if (reset_records) { clear_records(); }
         return env->reset( seed );
     }
+
 
     Observation step( action_t action ) {
         state_t current_state = get_current_state();

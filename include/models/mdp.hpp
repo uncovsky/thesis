@@ -124,7 +124,6 @@ public:
     }
 
 
-
     bool is_terminal_state( size_t state ) const {
         std::vector< size_t > avail_actions = get_actions( state );
         for ( size_t action : avail_actions ) {

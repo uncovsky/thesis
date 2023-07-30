@@ -14,7 +14,7 @@ int main(){
 
     // make an example mdp with 5 states and two actions total
     for ( size_t i = 0 ; i < 5 ; i++ ) { 
-        transitions.push_back( Matrix2D< double >() );
+        transitions.push_back( Matrix2D< double >(2, 5) );
     }
 
     // actions 0 and 1 detrministically change state to 1/2
@@ -31,8 +31,8 @@ int main(){
     transitions[3].insert(0, 3) = 1.0;
     transitions[4].insert(0, 4) = 1.0;
 
-    rewards.push_back( Matrix2D< double >( ) );
-    rewards.push_back( Matrix2D< double >( ) );
+    rewards.push_back( Matrix2D< double >(5, 2) );
+    rewards.push_back( Matrix2D< double >(5, 2) );
 
     // first component of reward for action 0/1 in state 0
     rewards[0].insert( 0, 0 ) = 3.0;
@@ -43,7 +43,7 @@ int main(){
     rewards[1].insert( 0, 1 ) = 1.0;
 
     // rewards from states 1 and 2 are (1, 1)
-    rewards[0].insert( 1, 1 ) = 1.0;
+    rewards[0].insert( 1, 0 ) = 1.0;
     rewards[1].insert( 1, 0 ) = 1.0;
 
     rewards[0].insert( 2, 0 ) = 1.0;
@@ -57,16 +57,16 @@ int main(){
 
     // third argument is the reward bounds, just placeholders right now
     MDP<double> mdp( transitions,
-                  rewards,
-                  std::make_pair ( std::vector< double > ( { 0.0, 0.0 } ), std::vector< double > ( { 3.0, 1.0 } ) ),
-                  0
+                     rewards,
+                     std::make_pair ( std::vector< double > ( { 0.0, 0.0 } ), std::vector< double > ( { 3.0, 1.0 } ) ),
+                    0
                 );
 
 
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap( &mdp );
 
     // env, discount params and precision ( unused for now )
-    BRTDPSolver brtdp( env_wrap, { 0.75, 0.75 }, 0.005  );
-    brtdp.solve( 10, 10 );
+    BRTDPSolver brtdp( std::move( env_wrap ) , { 0.75, 0.75 }, 0.005  );
+    brtdp.solve( 100, 10 );
 
 }

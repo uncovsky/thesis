@@ -26,12 +26,22 @@ public:
         gen.seed( seed );
     }
 
-    double rand_float( double min, double max ) {
-        return std::fmod( float_dist( gen ), max - min ) + min;
+
+    int rand_int(){
+        return int_dist( gen );
     }
 
+    int rand_int( int min, int max ){
+        return ( rand_int() % ( max - min ) ) + min;
+    }
+
+
     double rand_float() {
-        return float_dist(gen);
+        return float_dist( gen );
+    }
+
+    double rand_float( double min, double max ) {
+        return std::fmod( rand_float() , max - min ) + min;
     }
 
     template < typename prob_t > 
@@ -55,15 +65,6 @@ public:
 
         return 0;
     }
-
-    int rand_int( int min, int max ) {
-        return int_dist( gen ) % ( max - min ) + min;
-    }
-
-    int rand_int() {
-        return int_dist( gen );
-    }
-
 };
 
 
