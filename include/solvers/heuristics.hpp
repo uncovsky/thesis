@@ -1,3 +1,0 @@
-/* 
- * different heuristics for brtdp
- */
