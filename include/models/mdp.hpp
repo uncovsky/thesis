@@ -46,6 +46,14 @@ public:
             gen(){}
 
 
+    // copy from other and set state to initial
+    MDP( const MDP& other ) : transitions( other.get_transition_matrix() ),
+                              reward_models( other.get_reward_matrix() ),
+                              reward_bounds( other.reward_range() ),
+                              initial_state( other.get_initial_state() ),
+                              current_state( other.get_initial_state() ),
+                              gen(  ){ }
+
 
     MDP( const TransitionMatrix& transitions, const RewardMatrix& rewards, 
               std::pair< reward_vec, reward_vec > reward_bounds, size_t s )
@@ -83,6 +91,17 @@ public:
         return available_actions;
     }
 
+    RewardMatrix get_reward_matrix() const {
+        return reward_models;
+    }
+
+    TransitionMatrix get_transition_matrix() const {
+        return transitions;
+    }
+
+    size_t get_initial_state() const {
+        return initial_state;
+    }
 
 
     std::map< size_t, double > get_transition( size_t state, 

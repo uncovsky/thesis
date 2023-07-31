@@ -82,14 +82,14 @@ template < typename value_t >
 bool pareto_check_remove( const std::vector< value_t > &value,
                           std::set< std::vector< value_t > > &input_set ) {
 
-    for ( auto it = input_set.begin(); it  < input_set.end(); ){
+    for ( auto it = input_set.begin(); it != input_set.end(); ){
 
         // if value is dominated, then from input condition can't dominate any
         // member of input set, safe to return
         if ( is_dominated( value, *it ) )
             return true;
 
-        if ( is_dominated( *it, value ) ){ it = input_set.remove(it); }
+        if ( is_dominated( *it, value ) ){ it = input_set.erase(it); }
         else  { it++; }
     
     }

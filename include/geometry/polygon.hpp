@@ -72,6 +72,17 @@ public:
         return vertices;
     }
 
+    // hacky solution since points tracked as std::vectors,
+    // could change them to Eigen::Vectors / arrs and template the dims
+    size_t get_dimension() const {
+        if ( vertices.empty() ) 
+            return 0;
+        
+        Point vertex = *( vertices.begin() );
+
+        return vertex.size();
+    }
+
     /* multiplication & addition, both element-wise and single elements */
 
     void multiply_scalar( value_t mult ) {
@@ -175,52 +186,6 @@ public:
         facets = std::move( new_facets );
     }
 
-    // hacky solution since points tracked as std::vectors,
-    // could change them to Eigen::Vectors / arrs and template the dims
-    size_t get_dimension() const {
-        if ( vertices.empty() ) 
-            return 0;
-        
-        Point vertex = *( vertices.begin() );
-
-        return vertex.size();
-    }
-
-    // precondition: convex hull has been called beforehand, facets are
-    // correctly initialized
-    value_t point_distance( const Point& point ) const {
-        if ( facets.empty() )
-            return 0;
-
-        // handle one dimensional case, 
-        // at most 2 vertices after calling convex_hull()
-        if ( get_dimension() == 1 ) {
-            auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
-            return std::min( min_x[0] - point[0], max_x[0] - point[0] );
-        }
-
-        LineSegment< value_t > first_facet = *( facets.begin() );
-
-        value_t min_distance = first_facet.point_distance( point );
-
-        for ( const auto &ls : facets  ) {
-           min_distance = std::min( min_distance, ls.point_distance( point ) );
-        }
-
-        return min_distance;
-    }
-
-    // computes hausdorff distance of two polygons, assuming *this is contained
-    // in upper_polygon entirely and facets of *this are initialized properly
-    // ( convex hull call preceded this )
-    value_t hausdorff_distance( const Polygon& upper_polygon ) {
-        value_t max_distance = 0;
-
-        for ( const auto &v : upper_polygon.get_vertices() ) {
-            max_distance = std::max( max_distance, point_distance( v ) );
-        }
-        return max_distance;
-    }
 
     // computes convex hull of vertices, removing all but the vertices forming
     // the hull. also correctly initializes facets 
@@ -261,6 +226,48 @@ public:
         facets = new_facets;
     }
 
+    void pareto( const Point& ref_point ){
+        convex_hull();
+        downward_closure( ref_point );
+    }
+
+    // precondition: convex hull has been called beforehand, facets are
+    // correctly initialized
+    value_t point_distance( const Point& point ) const {
+        if ( facets.empty() )
+            return 0;
+
+        // handle one dimensional case, 
+        // at most 2 vertices after calling convex_hull()
+        if ( get_dimension() == 1 ) {
+            auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
+            return std::min( min_x[0] - point[0], max_x[0] - point[0] );
+        }
+
+        LineSegment< value_t > first_facet = *( facets.begin() );
+
+        value_t min_distance = first_facet.point_distance( point );
+
+        for ( const auto &ls : facets  ) {
+           min_distance = std::min( min_distance, ls.point_distance( point ) );
+        }
+
+        return min_distance;
+    }
+
+    // computes hausdorff distance of two polygons, assuming *this is contained
+    // in upper_polygon entirely and facets of *this are initialized properly
+    // ( convex hull call preceded this )
+    value_t hausdorff_distance( const Polygon& upper_polygon ) {
+        value_t max_distance = 0;
+
+        for ( const auto &v : upper_polygon.get_vertices() ) {
+            max_distance = std::max( max_distance, point_distance( v ) );
+        }
+        return max_distance;
+    }
+
+
     std::string to_string( ) const {
         std::stringstream str;
 
@@ -285,7 +292,6 @@ public:
             str << "\n";
             }
 
-        std::cout << "ahoj" << std::endl;
         return str.str();
     }
 

@@ -37,12 +37,10 @@ struct LineSegment {
     value_t point_distance( const Point< value_t >& y ) const {
         
         std::vector< value_t > line = subtract( x2, x1 );
-        value_t norm = dot_product( line, line );
-
         std::vector< value_t > delta = subtract( y, x1 );
 
         // get projection on line segment
-        value_t coeff = std::clamp( dot_product( delta, line ) / norm , value_t( 0 ), value_t( 1 ) );
+        value_t coeff = std::clamp( dot_product( delta, line ) , value_t( 0 ), value_t( 1 ) );
 
         Point< value_t > proj = add( x1 , multiply( coeff, line ) );
 

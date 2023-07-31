@@ -1,6 +1,8 @@
 # pragma once
 
 # include "geometry/polygon.hpp"
+# include "models/env_wrapper.hpp"
+# include "utils/geometry_utils.hpp"
 # include <cassert>
 
 
@@ -85,6 +87,36 @@ void test_convex_hull() {
 
 
     assert( check_convex_hull( polygon1vert, polygon1hullvert, polygon1hullfacets ) );
+}
+
+
+template < typename value_t > 
+bool check_hausdorff_distance( const std::set< std::vector< value_t > > &lower_vertices,
+                               const std::set< std::vector< value_t > > &upper_vertices,
+                               const std::vector< value_t > &minimal_point,
+                               value_t expected_distance ){
+
+    Bounds< value_t > res( lower_vertices, upper_vertices );
+    std::cout << res.bound_distance( minimal_point ) << std::endl;
+    std::cout << res << std::endl;
+    return res.bound_distance( minimal_point ) == expected_distance;
+}
+
+
+
+void test_euclidean_distance(){
+    assert( euclidean_distance< double > ( { 0, 0 }, { 0, 0 } )  == 0 );
+    assert( euclidean_distance< double > ( { 0, 10 }, { 0, 0 } )  == 10 );
+    assert( euclidean_distance< double > ( { 12, 4 }, { 0, 0 } )  == std::sqrt( 160 ) );
+    assert( euclidean_distance< double > ( { 12, 4 }, { 2, 2 } )  == std::sqrt( 104 ) );
+    assert( euclidean_distance< double > ( { 1, 5 }, { -10, 14 } )  == std::sqrt( 202 ) );
+}
+
+void test_hausdorff_distance(){
+    std::set< std::vector< double > > vertices1( { { 12, 4 } } );
+    std::set< std::vector< double > > vertices2( { { 0, 0 } } );
+
+    assert( check_hausdorff_distance( vertices2, vertices1, { 0, 0 }, std::sqrt( 160 ) ) );
 }
 
 

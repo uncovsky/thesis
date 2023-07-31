@@ -92,9 +92,10 @@ public:
         upper_bound.shift_vector( shift );
     }
     
-    value_t bound_distance( std::vector< value_t > ref_point ){
-        lower_bound.convex_hull();
-        lower_bound.downward_closure( ref_point ); 
+    // reference point is the min of all objectives ( theoretical lowest
+    // possible value in objective space dominated by all other points )
+    value_t bound_distance( const std::vector< value_t > &ref_point ){
+        lower_bound.pareto( ref_point );
         upper_bound.convex_hull();
         return lower_bound.hausdorff_distance( upper_bound );
     }
@@ -161,9 +162,10 @@ public:
 
     void clear_records(){
         state_action_bounds.clear();
+        discovered_states.clear();
     }
 
-    void init_bound( state_t s, action_t a ) {
+    std::pair< std::vector< value_t >, std::vector< value_t > > min_max_discounted_reward() {
 
         auto [ min, max ] = reward_range();
 
@@ -173,13 +175,17 @@ public:
 
         std::vector< value_t > lower_bound_pt = divide( min, denominator );
         std::vector< value_t > upper_bound_pt = divide( max, denominator );
+        
+        return std::make_pair( lower_bound_pt, upper_bound_pt );
+    }
 
+    void init_bound( state_t s, action_t a ) {
+
+        auto [ lower_bound_pt, upper_bound_pt ] = min_max_discounted_reward();
         Bounds< value_t > result ( { lower_bound_pt }, { upper_bound_pt } );
 
         auto idx = std::make_pair( s, a );
-
         state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( std::move( result ) );
-
     }
 
     std::pair< reward_t, reward_t > reward_range() const {
