@@ -10,4 +10,5 @@ template< typename value_t >
 using Matrix3D = std::vector< Matrix2D< value_t > >;
 
 
-
+template< typename value_t > 
+using Point = std::vector< value_t > ;

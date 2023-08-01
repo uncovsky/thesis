@@ -1,10 +1,13 @@
 # include "polygon_tests.hpp"
 # include "brtdp_tests.hpp"
+# include "pareto_tests.hpp"
 # include <iostream>
 
 int main() {
     std::cout << "Testing geometry utilities..\n";
     test_euclidean_distance();
+    std::cout << "Testing pareto utilities..\n";
+    test_nondominated();
     std::cout << "Success!\n\n\n";
 
     std::cout << "Testing convex hull..\n";

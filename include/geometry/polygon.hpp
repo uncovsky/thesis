@@ -27,28 +27,31 @@
 template < typename value_t >
 class Polygon {
 
-    // replace with facet later
-    // for higher dimensions maybe solve QP for distance?
-    using Point = std::vector< value_t >;
-
-    std::set< Point > vertices;
-    std::set< LineSegment< value_t > > facets;
+    std::vector< Point< value_t > > vertices;
+    std::vector< LineSegment< value_t > > facets;
 
 
 public:
 
     Polygon( ) : vertices( ), facets( ) {  }
 
-    Polygon( const std::set< Point > &v ) : vertices( v ),
+    Polygon( const std::vector< Point< value_t > > &v ) : vertices( v ),
                                             facets ( ) {  }
 
-    Polygon( std::set< Point > &&v ) :  vertices( std::move( v ) ), 
-                                        facets ( ) {  }
-    Polygon( const std::set< Point > &v,
-             const std::set< LineSegment< value_t > > &f ) : vertices( v ),
-                                                             facets ( f ) {  }
+    Polygon( std::vector< Point< value_t > > &&v ) :  vertices( std::move( v ) ), 
+                                           facets ( ) {  }
+    Polygon( const std::vector< Point< value_t > > &v,
+             const std::vector< LineSegment< value_t > > &f ) : vertices( v ),
+                                                                facets ( f ) {  }
 
-    bool operator==( const Polygon& rhs ) const {
+    bool operator==( Polygon& rhs ) {
+
+        std::sort( facets.begin(), facets.end() );
+        std::sort( vertices.begin(), vertices.end() );
+
+        std::sort( rhs.get_facets().begin(), rhs.get_facets().end() );
+        std::sort( rhs.get_vertices().begin(), rhs.get_vertices().end() );
+
         bool equal_f = facets == rhs.get_facets();
         bool equal_v = vertices == rhs.get_vertices();
 
@@ -56,19 +59,19 @@ public:
     }
 
 
-    const std::set< Point >& get_vertices( ) const {
+    const std::vector< Point< value_t > >& get_vertices( ) const {
         return vertices;
     }
 
-    const std::set< LineSegment< value_t > >& get_facets( ) const {
+    const std::vector< LineSegment< value_t > >& get_facets( ) const {
         return facets;
     }
 
-    std::set< LineSegment< value_t > >& get_facets( ) {
+    std::vector< LineSegment< value_t > >& get_facets( ) {
         return facets;
     }
 
-    std::set< Point >& get_vertices( ) {
+    std::vector< Point< value_t > >& get_vertices( ) {
         return vertices;
     }
 
@@ -78,7 +81,7 @@ public:
         if ( vertices.empty() ) 
             return 0;
         
-        Point vertex = *( vertices.begin() );
+        Point< value_t > vertex = *( vertices.begin() );
 
         return vertex.size();
     }
@@ -86,44 +89,36 @@ public:
     /* multiplication & addition, both element-wise and single elements */
 
     void multiply_scalar( value_t mult ) {
-        std::set< Point > new_vertices;
-        for ( const Point &p : vertices ) {
-            new_vertices.insert( multiply( mult, p ) );
+        for ( Point< value_t > &p : vertices ) {
+            multiply( mult, p );
         }    
-
-        vertices = std::move( new_vertices );
     }
 
-    void multiply_vector( const Point &mult ) {
-        std::set< Point > new_vertices;
-        for ( const Point &p : vertices ) {
-            new_vertices.insert( multiply( mult, p ) );
+    void multiply_vector( const Point< value_t > &mult ) {
+        for ( Point< value_t > &p : vertices ) {
+            multiply( p, mult );
         }    
-
-        vertices = std::move( new_vertices );
     }
 
     void shift_scalar( value_t shift ) {
-        std::set< Point > new_vertices;
-        for ( const Point &p : vertices ) {
-            new_vertices.insert( add( shift, p ) );
+        for ( Point< value_t > &p : vertices ) {
+            // foreach i p[i] += shift
+            add( shift, p );
         }    
 
-        vertices = std::move( new_vertices );
     }
 
     void shift_vector( const std::vector< value_t > &shift ) {
-        std::set< Point > new_vertices;
-        for ( const Point &p : vertices ) {
-            new_vertices.insert( add( shift, p ) );
+        for ( Point< value_t > &p : vertices ) {
+            // p += shift
+            add( p, shift );
         }    
 
-        vertices = std::move( new_vertices );
     }
 
     void minkowski_sum( const Polygon &rhs ) {
-        std::set< Point > new_vertices;
-        std::set< Point > rhs_vertices = rhs.get_vertices();
+        std::vector< Point< value_t > > new_vertices;
+        const std::vector< Point< value_t > > &rhs_vertices = rhs.get_vertices();
 
         if ( rhs_vertices.empty() ) { 
             return; 
@@ -134,11 +129,22 @@ public:
         }
         for ( const auto &v1 : vertices ) {
             for ( const auto &v2 : rhs_vertices ) {
-                new_vertices.insert( add( v1, v2 ) );
+                Point< value_t > v1_copy( v1 );
+                add( v1_copy, v2  );
+                new_vertices.emplace_back( v1 );
             }
         }
 
-        vertices = new_vertices;
+        vertices = std::move( new_vertices );
+    }
+
+    void remove_eps_close( value_t eps ) {
+        for ( auto it = vertices.begin(); it != vertices.end(); it++ ){
+            for ( auto s_it = std::next( it, 1 ); s_it != vertices.end(); ) {
+                if ( euclidean_distance( *s_it, *it ) < eps ) { s_it = vertices.erase( s_it ); }
+                else { s_it++; }
+            }
+        }
     }
 
     // downward closure for 1/2 dimensions
@@ -147,39 +153,38 @@ public:
     //  vertices form a convex polygon ( so convex_hull has been called
     //  beforehand )
     // reference point contains minimal values for each objective
-    void downward_closure( const Point &reference_point ) {
+    void downward_closure( const Point< value_t > &reference_point ) {
         assert ( reference_point.size() < 3 );
 
         if ( reference_point.size() == 0 )
             return;
+        if ( vertices.empty() )
+            return;
 
-        std::set< LineSegment< value_t > > new_facets;
+        std::vector< LineSegment< value_t > > new_facets;
 
         if ( reference_point.size() == 1 ) {
-
            // only one nondom vertex is possible 
-            if ( !vertices.empty() ) { 
-                new_facets.emplace( *(vertices.begin() ), reference_point );
-            }
+            new_facets.emplace_back( vertices[0], reference_point );
         }
 
         else {
 
             auto extreme_points = get_extreme_points( vertices );
 
-            Point max_x_point = extreme_points[0].second;
-            Point max_y_point = extreme_points[1].second;
+            Point< value_t > max_x_point = extreme_points[0].second;
+            Point< value_t > max_y_point = extreme_points[1].second;
 
             new_facets = std::move( facets );
 
             // just add two line segments from extremal points of the curve for now
             // need to also delete facets that are now interior, todo later, 
             // but shouldn't matter with distance calculations 
-            Point facet_x = { max_x_point[0], reference_point[1] };
-            Point facet_y = { reference_point[0], max_y_point[1] };
+            Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
+            Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
 
-            new_facets.emplace( facet_x, max_x_point );
-            new_facets.emplace( facet_y, max_y_point );
+            new_facets.emplace_back( facet_x, max_x_point );
+            new_facets.emplace_back( facet_y, max_y_point );
 
         }
 
@@ -197,7 +202,7 @@ public:
         if ( get_dimension() == 1 ) {
             auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
 
-            if ( vertices.size() == 1 ) {
+            if ( min_x == max_x ) {
                 vertices = { min_x };
                 facets = { LineSegment< value_t > { min_x, min_x } };
             }
@@ -211,29 +216,32 @@ public:
         }
         
 
-        std::vector< Point > result = quickhull( vertices );
-        std::set< LineSegment< value_t > > new_facets;
+        std::vector< Point< value_t > > result = quickhull( vertices );
+        std::vector< LineSegment< value_t > > new_facets;
 
         size_t vertex_count = result.size();
 
-        for ( size_t i = 0; i < vertex_count; i++ ) {
-            new_facets.emplace( result[i], result[ ( i + 1 ) % vertex_count] );
+        for ( size_t i = 0; i < vertex_count - 1; i++ ) {
+            new_facets.emplace_back( result[i], result[i + 1] );
         }
 
-        std::set< Point > new_vertices( result.begin(), result.end() );
+        if ( vertex_count > 1 )
+            new_facets.emplace_back( result.back(), result[0] );
+
+        std::vector< Point< value_t > > new_vertices( result.begin(), result.end() );
 
         vertices = new_vertices;
         facets = new_facets;
     }
 
-    void pareto( const Point& ref_point ){
+    void pareto( const Point< value_t >& ref_point ){
         convex_hull();
         downward_closure( ref_point );
     }
 
     // precondition: convex hull has been called beforehand, facets are
     // correctly initialized
-    value_t point_distance( const Point& point ) const {
+    value_t point_distance( const Point< value_t >& point ) const {
         if ( facets.empty() )
             return 0;
 
@@ -244,8 +252,7 @@ public:
             return std::min( min_x[0] - point[0], max_x[0] - point[0] );
         }
 
-        LineSegment< value_t > first_facet = *( facets.begin() );
-
+        LineSegment< value_t > first_facet = facets[0];
         value_t min_distance = first_facet.point_distance( point );
 
         for ( const auto &ls : facets  ) {

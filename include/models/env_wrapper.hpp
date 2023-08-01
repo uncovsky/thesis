@@ -21,8 +21,8 @@ public:
 
     Bounds() : lower_bound(), upper_bound(){}
 
-    Bounds ( const std::set< std::vector< value_t > > &lower_pts, 
-             const std::set< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
+    Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
+             const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
                                                                     upper_bound( upper_pts ) {}
     Bounds ( const Polygon< value_t > &lower, 
              const Polygon< value_t > &upper ) : lower_bound( lower ),
@@ -49,8 +49,18 @@ public:
     }
 
     void nondominated() {
-        remove_dominated( lower_bound.get_vertices() );
-        remove_dominated( upper_bound.get_vertices() );
+        remove_dominated_alt( lower_bound.get_vertices() );
+        remove_dominated_alt( upper_bound.get_vertices() );
+    }
+
+    void remove_eps_close( value_t eps ){
+        lower_bound.remove_eps_close( eps );
+        upper_bound.remove_eps_close( eps );
+    }
+
+    void convex_hull() {
+        lower_bound.convex_hull();
+        upper_bound.convex_hull();
     }
     
     // joins both bounds with other, which means taking a union of both of the
@@ -69,7 +79,6 @@ public:
         upper_bound.minkowski_sum( other.upper() );
 
         nondominated();
-
     }
 
     void multiply_bounds( value_t mult ) {
@@ -171,12 +180,15 @@ public:
 
         // ( 1-\lambda_0, 1-\lambda_1, ... ), TODO: change this to something
         // more sensible, don't use c-style casts, but type traits?
-        std::vector< value_t > denominator = add( value_t( 1 ), multiply( value_t(-1) , discount_params ) );
-
-        std::vector< value_t > lower_bound_pt = divide( min, denominator );
-        std::vector< value_t > upper_bound_pt = divide( max, denominator );
+        std::vector< value_t > discount_copy( discount_params );
+        multiply( value_t( -1 ), discount_copy );
+        add( value_t( 1 ), discount_copy );
+         
         
-        return std::make_pair( lower_bound_pt, upper_bound_pt );
+         divide( min, discount_copy );
+         divide( max, discount_copy );
+        
+        return std::make_pair( min, max );
     }
 
     void init_bound( state_t s, action_t a ) {

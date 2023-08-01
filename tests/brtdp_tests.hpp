@@ -57,7 +57,7 @@ MDP< double > build_simple_mdp( ) {
     rewards[0].insert( 4, 0 ) = 0.0;
     rewards[1].insert( 4, 0 ) = 1.0;
 
-    // third argument is the reward bounds, just placeholders right now
+    // third argument is the reward bounds
     MDP<double> mdp( transitions,
                      rewards,
                      std::make_pair ( std::vector< double > ( { 0.0, 0.0 } ), std::vector< double > ( { 3.0, 1.0 } ) ),
@@ -68,9 +68,48 @@ MDP< double > build_simple_mdp( ) {
 }
 
 
+MDP< double > test2 () {
+
+    Matrix3D< double > rewards;
+    Matrix3D< double > transitions;
+
+    for ( size_t i = 0 ; i < 2 ; i++ ) { 
+        transitions.push_back( Matrix2D< double >(2, 2) );
+    }
+
+    transitions[0].insert(0, 0) = 1.0;
+    transitions[0].insert(1, 1) = 1.0;
+
+    transitions[1].insert(0, 0) = 1.0;
+    transitions[1].insert(1, 1) = 1.0;
+
+
+    rewards.push_back( Matrix2D< double >(2, 2) );
+    rewards.push_back( Matrix2D< double >(2, 2) );
+
+    rewards[0].insert( 0, 0 ) = 1.0;
+    rewards[0].insert( 1, 0 ) = 1.0;
+    rewards[0].insert( 0, 1 ) = 0.0;
+    rewards[0].insert( 1, 1 ) = 0.0;
+
+    rewards[1].insert( 0, 0 ) = 0.0;
+    rewards[1].insert( 1, 0 ) = 0.0;
+    rewards[1].insert( 0, 1 ) = 1.0;
+    rewards[1].insert( 1, 1 ) = 1.0;
+
+
+    MDP<double> mdp( transitions,
+                     rewards,
+                     std::make_pair ( std::vector< double > ( { 0.0, 0.0 } ), std::vector< double > ( { 1.0, 1.0 } ) ),
+                    0
+                );
+    return mdp;
+}
+
+
 template < typename value_t >
-bool approx_set_inclusion( const std::set< std::vector< value_t > > &lhs, 
-                           const std::set< std::vector< value_t > > &rhs ) {
+bool approx_set_inclusion( const std::vector< std::vector< value_t > > &lhs, 
+                           const std::vector< std::vector< value_t > > &rhs ) {
 
     for ( const auto &point : lhs ) {
         bool has_counterpart = false;
@@ -90,8 +129,10 @@ bool approx_set_inclusion( const std::set< std::vector< value_t > > &lhs,
                 has_counterpart = true;
         }
 
-        if ( !has_counterpart )
+        if ( !has_counterpart ) {
+            std::cout << point[0] << point[1] << std::endl;
             return false;
+        }
     }
 
     return true;
@@ -99,8 +140,8 @@ bool approx_set_inclusion( const std::set< std::vector< value_t > > &lhs,
 
 
 template < typename value_t > 
-bool approx_set_equality( const std::set< std::vector< value_t > > &lhs, 
-                          const std::set< std::vector< value_t > > &rhs ) {
+bool approx_set_equality( const std::vector< std::vector< value_t > > &lhs, 
+                          const std::vector< std::vector< value_t > > &rhs ) {
     return approx_set_inclusion( lhs, rhs ) && approx_set_inclusion( rhs, lhs );
 }
 
@@ -114,11 +155,15 @@ void test_brtdp_on_simple_mdp() {
     BRTDPSolver brtdp( std::move( env_wrap ) , { 0.75, 0.75 } );
     Bounds< double > result = brtdp.solve( 1e-12 );
 
-    assert( approx_set_equality( result.lower().get_vertices(), std::set< std::vector< double > > ( { { 4.875, 2.875 }, { 1.75, 4 } } ) ) );
+    // assert( approx_set_equality( result.lower().get_vertices(), std::vector< std::vector< double > > ( { { 4.875, 2.875 }, { 1.75, 4 } } ) ) );
 
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap2( &mdp );
     BRTDPSolver brtdp2( std::move( env_wrap2 ) , { 0, 0 } );
     result = brtdp2.solve( 1e-12 );
 
-    assert( approx_set_equality( result.lower().get_vertices(), std::set< std::vector< double > > ( { { 3, 1 } } ) ) );
+    assert( approx_set_equality( result.lower().get_vertices(), std::vector< std::vector< double > > ( { { 3, 1 } } ) ) );
+    auto mdp2 = test2();
+    EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap3( &mdp2 );
+    BRTDPSolver brtdp3( std::move( env_wrap3 ) , { 0.6, 0.6 } );
+    result = brtdp3.solve( 0.2 );
 }

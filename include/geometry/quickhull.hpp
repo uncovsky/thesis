@@ -9,7 +9,7 @@
 
 // get convex hull of a set of points (only works for 2D so far)
 template < typename value_t >
-std::vector< Point< value_t > > quickhull( const std::set< Point< value_t > > &points,
+std::vector< Point< value_t > > quickhull( const std::vector< Point< value_t > > &points,
                                            double eps = 1e-10 ) {
     if ( points.empty() )
         return {};
@@ -27,13 +27,16 @@ std::vector< Point< value_t > > quickhull( const std::set< Point< value_t > > &p
     // select & connect two extremal points with a line segment
     LineSegment< value_t > line( min_x, max_x );
 
-    std::set< Point< value_t > > left_pts, right_pts;
+    if ( min_x == max_x )
+        return { min_x };
+
+    std::vector< Point< value_t > > left_pts, right_pts;
 
     // sort points based on which halfspace they belong to
     for ( const auto &p : points ) {
         double ccw_res = line.ccw( p );
-        if ( ccw_res < -1 * eps ) { right_pts.insert(p); }
-        else if ( ccw_res > eps )  { left_pts.insert(p); }
+        if ( ccw_res < -1 * eps ) { right_pts.push_back(p); }
+        else if ( ccw_res > eps )  { left_pts.push_back(p); }
     }
 
     // the two extremal points lie on the hull, investigate others recursively
@@ -49,7 +52,7 @@ std::vector< Point< value_t > > quickhull( const std::set< Point< value_t > > &p
 
 template< typename value_t >
 void quickhull_rec(        std::vector< Point< value_t > >& result , 
-                     const std::set< Point< value_t > >& points , 
+                     const std::vector< Point< value_t > >& points , 
                      const LineSegment< value_t > &line,
                            double eps = 1e-10 ) {
 
@@ -58,7 +61,7 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
 
     // find furthest point away from the line segment, this point is 
     // on the convex hull as well
-    Point< value_t > farthest_pt = *(points.begin());
+    Point< value_t > farthest_pt = points[0];
     value_t max_dist = line.point_distance( farthest_pt );
 
     for ( const auto &p : points ) {
@@ -72,8 +75,7 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
 
     auto [l, r] = line.get_points();
 
-
-    std::set< Point< value_t > > left_pts, right_pts;
+    std::vector< Point< value_t > > left_pts, right_pts;
 
     LineSegment< value_t > to_farthest( l, farthest_pt );
     LineSegment< value_t > from_farthest( farthest_pt, r );
@@ -87,8 +89,8 @@ void quickhull_rec(        std::vector< Point< value_t > >& result ,
         double ccw_res_left = to_farthest.ccw( p );
         double ccw_res_right = from_farthest.ccw( p );
 
-        if ( ccw_res_left > eps ) { left_pts.insert(p); }
-        if ( ccw_res_right > eps ) { right_pts.insert(p); }
+        if ( ccw_res_left > eps ) { left_pts.push_back(p); }
+        else if ( ccw_res_right > eps ) { right_pts.push_back(p); }
     }
 
 

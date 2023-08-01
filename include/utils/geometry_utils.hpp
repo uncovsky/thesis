@@ -26,77 +26,58 @@ value_t dot_product( const std::vector< value_t > &lhs ,
 
 
 template < typename value_t > 
-std::vector< value_t > multiply( value_t scalar, 
-                                 const std::vector< value_t > &vec ) {
-    std::vector< value_t > res( vec ); 
-    for ( value_t &elem : res ){
+void multiply( value_t scalar, 
+               std::vector< value_t > &vec ) {
+    for ( value_t &elem : vec ){
         elem *= scalar;
     }
-
-    return res;
 }
 
 template < typename value_t > 
-std::vector< value_t > add( value_t scalar, 
-                            const std::vector< value_t > &vec ) {
-    std::vector< value_t > res( vec ); 
-    for ( value_t &elem : res ){
+void add( value_t scalar, 
+          std::vector< value_t > &vec ) {
+    for ( value_t &elem : vec ){
         elem += scalar;
     }
-
-    return res;
 }
 
-/* component-wise multiplication */
 template < typename value_t > 
-std::vector< value_t > multiply( const std::vector< value_t > &lhs , 
+void multiply( std::vector< value_t > &lhs , 
                                  const std::vector< value_t > &rhs ) {
 
     assert( lhs.size() == rhs.size() );
-    std::vector< value_t > res( lhs ); 
     for ( size_t i = 0; i < rhs.size(); i++ ){
-        res[i] *= rhs[i];
+        lhs[i] *= rhs[i];
     }
-    return res;
 }
 
 /* component-wise division */
 template < typename value_t > 
-std::vector< value_t > divide( const std::vector< value_t > &lhs , 
-                                 const std::vector< value_t > &rhs ) {
-
+void divide( std::vector< value_t > &lhs , 
+             const std::vector< value_t > &rhs ) {
     assert( lhs.size() == rhs.size() );
-    std::vector< value_t > res( lhs ); 
     for ( size_t i = 0; i < rhs.size(); i++ ){
-        res[i] /= rhs[i];
+        lhs[i] /= rhs[i];
     }
-    return res;
 }
 
 template < typename value_t > 
-std::vector< value_t > add( const std::vector< value_t > &lhs, 
+void add( std::vector< value_t > &lhs, 
                             const std::vector< value_t > &rhs ) {
     assert ( lhs.size() == rhs.size() );
-    std::vector< value_t > res( lhs ); 
-
     for ( size_t i = 0; i < lhs.size(); i++ ) {
-        res[i] += rhs[i];
+        lhs[i] += rhs[i];
     }
-
-    return res;
 }
 
 template < typename value_t > 
-std::vector< value_t > subtract( const std::vector< value_t > &lhs, 
+void subtract( std::vector< value_t > &lhs, 
                                  const std::vector< value_t > &rhs ) {
     assert ( lhs.size() == rhs.size() );
-    std::vector< value_t > res( lhs ); 
-
     for ( size_t i = 0; i < lhs.size(); i++ ) {
-        res[i] -= rhs[i];
+        lhs[i] -= rhs[i];
     }
 
-    return res;
 }
 
 template < typename value_t > 
@@ -111,7 +92,9 @@ value_t euclidean_distance( const std::vector< value_t > &lhs ,
                      const std::vector< value_t > &rhs) {
     assert( lhs.size() == rhs.size() );
 
-    std::vector< value_t > diff = subtract( lhs, rhs );
+    std::vector< value_t > diff( lhs );
+    // get diff
+    subtract( diff, rhs );
 
     return std::sqrt( dot_product( diff, diff ) );
 }

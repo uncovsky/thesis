@@ -54,7 +54,7 @@ class BRTDPSolver{
 
         // TODO: probably a global typedef of Point in eigen_types 
         // would be helpful to change across all files, 
-        using VertexSet = typename std::set< std::vector< value_t > >; 
+        using VertexSet = typename std::vector< std::vector< value_t > >; 
         std::vector< std::unique_ptr< VertexSet > > bounds;
 
         // copy vertices of upper bounds
@@ -104,65 +104,15 @@ class BRTDPSolver{
         
     }
 
-    // total area dominated by vertices of
-    // upper bound w.r.t. reference point ), so far only 2D as well
-    value_t hypervolume_indicator( const Bounds< value_t > &bound,
-                                   const std::vector< value_t > &ref_point ) const {
-
-        std::vector< value_t > ref_copy( ref_point );
-        value_t area(0);
-
-        // get value vectors of upper bound
-        const auto& vertices = bound.upper().get_vertices();
-
-        // iterate backwards ( from points with highest x coordinates, since
-        // vectors are sorted lexicographically )
-        for ( auto it = vertices.rbegin(); it != vertices.rend(); ) {
-            area += ( ( *it )[ 0 ] - ref_copy[0] ) * ( ( *it )[ 1 ] - ref_copy[1] );
-
-            // adjust so areas are disjoint
-            ref_copy[1] = ( *it )[1];
-        }
-
-        return area;
-
-    }
-
-    // right now only 2d supported, so area_action would be a more fitting name
-    // hypervolume heuristic from pareto q learning paper
-    action_t hypervolume_action( state_t s, const std::vector< action_t > &avail_actions ) {
-        auto [ min_value, _ ] = env.min_max_discounted_reward();
-
-        std::vector< value_t > areas;
-        value_t max_area(0);
-
-        for ( action_t a : avail_actions ) {
-            areas.push_back( hypervolume_indicator( env.get_state_action_bound( s, a ), min_value ) );
-            max_area = std::max( max_area, areas.back() );
-        }
-
-        std::vector< action_t > maximising_actions;
-        for ( size_t i = 0; i < avail_actions.size(); i++ ){
-            if ( areas[i] == max_area ) { maximising_actions.push_back( avail_actions[i] ); }
-        }
-
-        return uniform_action( maximising_actions );
-    }
-
-
-
     action_t action_selection( state_t s, const std::vector< action_t > &avail_actions ) {
 
         if ( action_heuristic == ActionSelectionHeuristic::Uniform ) {
             return uniform_action( avail_actions );
         }
+        
+        // only these two supported right now
+        return pareto_action( s, avail_actions );
 
-        else if ( action_heuristic == ActionSelectionHeuristic::Pareto ) {
-            return pareto_action( s, avail_actions );
-
-        }
-
-        return hypervolume_action( s, avail_actions );
     }
 
     state_t bound_difference_state_selection( const std::map< state_t, double > &transitions ) {
@@ -232,7 +182,7 @@ class BRTDPSolver{
              * TODO: is this the correct stopping condition? */
             
             // discount_copy = discount_params^(iter+1) * max_value
-            discount_copy = multiply( discount_copy, discount_params );
+            multiply( discount_copy, discount_params );
 
             terminated = true;
 
@@ -262,6 +212,9 @@ class BRTDPSolver{
 
         result.multiply_bounds( discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
+
+        std::cout << " LENGTH " << result.lower().get_vertices().size();
+
         env.set_bound( s, a, std::move( result ) );
     }
 
@@ -301,23 +254,33 @@ public:
 
         size_t episode = 0;
 
-        auto bound = env.get_state_bound( starting_state );
-
         while ( env.get_state_bound( starting_state ).bound_distance( minimal_value ) >= precision ) {
             std::cout << "episode #" << episode << "\n";
             TrajectoryStack trajectory = sample_trajectory( maximal_value, precision );
             size_t i = 1;
             update_along_trajectory( trajectory, starting_state );
+            std::cout << env.get_state_bound( starting_state ).bound_distance( minimal_value ) << std::endl;
             episode++;
         }
 
-        Bounds< value_t > start_bound = env.get_state_bound( 0 );
+        auto start_bound = env.get_state_bound( starting_state );
 
         std::cout << "distance: " << start_bound.bound_distance( minimal_value ) << std::endl;
+        auto vertices = start_bound.lower().get_vertices();
 
         env.write_statistics();
+        std::sort( start_bound.lower().get_vertices().begin(), start_bound.lower().get_vertices().end() );
+        std::sort( start_bound.upper().get_vertices().begin(), start_bound.upper().get_vertices().end() );
         start_bound.lower().write_to_file( "starting_lower.txt" );
         start_bound.upper().write_to_file( "starting_upper.txt" );
+
+        for ( size_t i = 0; i < vertices.size(); i++ ) {
+            for ( size_t it = i + 1; it < vertices.size(); it++ ){
+                assert( vertices[i] != vertices[it] );
+            }
+
+        }
+
 
         return start_bound;
     }

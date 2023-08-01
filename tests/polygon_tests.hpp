@@ -7,9 +7,9 @@
 
 
 template< typename value_t >
-bool check_convex_hull( const std::set< std::vector< value_t > > &original_points,
-                        const std::set< std::vector< value_t > > &hull_points,
-                        const std::set< LineSegment< value_t > > &facet_points )
+bool check_convex_hull( const std::vector< std::vector< value_t > > &original_points,
+                        const std::vector< std::vector< value_t > > &hull_points,
+                        const std::vector< LineSegment< value_t > > &facet_points )
 {
     Polygon< value_t > result( hull_points, facet_points );
     Polygon< value_t > input( original_points);
@@ -40,17 +40,17 @@ bool check_convex_hull( const std::set< std::vector< value_t > > &original_point
 
 void test_convex_hull() {
 
-    std::set < std::vector< int > > line_vertices = { { -10 }, { -5 }, { 2 }, { 10 }, { 25 } };
-    std::set < std::vector< int > > hull_vertices = { { -10 } , { 25 } };
+    std::vector < std::vector< int > > line_vertices = { { -10 }, { -5 }, { 2 }, { 10 }, { 25 } };
+    std::vector < std::vector< int > > hull_vertices = { { -10 } , { 25 } };
 
 
     assert( check_convex_hull( line_vertices, hull_vertices, { LineSegment< int >( { -10 }, { -10 } ), LineSegment< int> ( { 25 }, { 25 } ) } ) );
 
 
 
-    std::set < std::vector< int > > line2D = { { -10, -10 }, { 2, 2 }, { 5, 5 }, { 300, 300 } } ;
+    std::vector < std::vector< int > > line2D = { { -10, -10 }, { 2, 2 }, { 5, 5 }, { 300, 300 } } ;
 
-    std::set < std::vector< int > > line2Dhull = { { -10, -10 } , { 300, 300 } } ;
+    std::vector < std::vector< int > > line2Dhull = { { -10, -10 } , { 300, 300 } } ;
 
     assert( check_convex_hull( line2D, 
                                line2Dhull, 
@@ -59,7 +59,7 @@ void test_convex_hull() {
                              ) );
 
 
-    std::set< std::vector< double > > polygon1vert ( { { 5.0, 2.0 },
+    std::vector< std::vector< double > > polygon1vert ( { { 5.0, 2.0 },
                                                    { 5.0, 3.0 },
                                                    { 6.5, 3.0 },
                                                    { 5.0, 3.5 },
@@ -71,28 +71,27 @@ void test_convex_hull() {
                                                    { 4.5, 5.0 },
                                                    { 6.5, 5.0 } } );
 
-    std::set< std::vector< double > > polygon1hullvert ( { { 5.0, 2.0 },
+    std::vector< std::vector< double > > polygon1hullvert ( { { 5.0, 2.0 },
                                                            { 6.5, 3.0 },
                                                            { 3.0, 4.0 },
                                                            { 4.5, 5.0 },
                                                            { 6.5, 5.0 } } );
 
-    std::set< LineSegment< double > > polygon1hullfacets;
+    std::vector< LineSegment< double > > polygon1hullfacets;
 
-    polygon1hullfacets.insert( LineSegment< double >( { 6.5, 3.0 }, { 5.0, 2.0 } ) );
-    polygon1hullfacets.insert( LineSegment< double >( { 5.0, 2.0 }, { 3.0, 4.0 } ) );
-    polygon1hullfacets.insert( LineSegment< double >( { 3.0, 4.0 }, { 4.5, 5.0 } ) );
-    polygon1hullfacets.insert( LineSegment< double >( { 4.5, 5.0 }, { 6.5, 5.0 } ) );
-    polygon1hullfacets.insert( LineSegment< double >( { 6.5, 5.0 }, { 6.5, 3.0 } ) );
+    polygon1hullfacets.push_back( LineSegment< double >( { 6.5, 3.0 }, { 5.0, 2.0 } ) );
+    polygon1hullfacets.push_back( LineSegment< double >( { 5.0, 2.0 }, { 3.0, 4.0 } ) );
+    polygon1hullfacets.push_back( LineSegment< double >( { 3.0, 4.0 }, { 4.5, 5.0 } ) );
+    polygon1hullfacets.push_back( LineSegment< double >( { 4.5, 5.0 }, { 6.5, 5.0 } ) );
+    polygon1hullfacets.push_back( LineSegment< double >( { 6.5, 5.0 }, { 6.5, 3.0 } ) );
 
 
     assert( check_convex_hull( polygon1vert, polygon1hullvert, polygon1hullfacets ) );
 }
 
-
 template < typename value_t > 
-bool check_hausdorff_distance( const std::set< std::vector< value_t > > &lower_vertices,
-                               const std::set< std::vector< value_t > > &upper_vertices,
+bool check_hausdorff_distance( const std::vector< std::vector< value_t > > &lower_vertices,
+                               const std::vector< std::vector< value_t > > &upper_vertices,
                                const std::vector< value_t > &minimal_point,
                                value_t expected_distance ){
 
@@ -113,8 +112,8 @@ void test_euclidean_distance(){
 }
 
 void test_hausdorff_distance(){
-    std::set< std::vector< double > > vertices1( { { 12, 4 } } );
-    std::set< std::vector< double > > vertices2( { { 0, 0 } } );
+    std::vector< std::vector< double > > vertices1( { { 12, 4 } } );
+    std::vector< std::vector< double > > vertices2( { { 0, 0 } } );
 
     assert( check_hausdorff_distance( vertices2, vertices1, { 0, 0 }, std::sqrt( 160 ) ) );
 }

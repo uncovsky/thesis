@@ -28,6 +28,11 @@ struct LineSegment {
     Point< value_t > x1, x2;
 
     LineSegment( const Point< value_t >& x1, const Point< value_t >& x2 ) : x1( x1 ), x2( x2 ) {  }
+    LineSegment( const LineSegment &other ) : x1(), x2() { 
+        auto [_x1, _x2] = other.get_points();
+        x1 = _x1;
+        x2 = _x2;
+    }
 
     size_t get_dimensions( ) const {
         assert ( x1.size() == x2.size() );
@@ -36,15 +41,21 @@ struct LineSegment {
 
     value_t point_distance( const Point< value_t >& y ) const {
         
-        std::vector< value_t > line = subtract( x2, x1 );
-        std::vector< value_t > delta = subtract( y, x1 );
+        std::vector< value_t > line( x2 ), delta( y );
+        
+        // line is vector of the line segment, delta is vector from x1 to y
+        subtract( line, x1 );
+        subtract( delta, x1 );
 
         // get projection on line segment
         value_t coeff = std::clamp( dot_product( delta, line ) , value_t( 0 ), value_t( 1 ) );
 
-        Point< value_t > proj = add( x1 , multiply( coeff, line ) );
+        // get projection, ( line * coeff + x1 )
+        multiply( coeff, line );
+        add( line, x1 );
 
-        return euclidean_distance( proj, y );
+        // calculate distance of this projection (saved in line) from y
+        return euclidean_distance( line, y );
 
     }
 
@@ -78,7 +89,7 @@ struct LineSegment {
 template < typename value_t > 
 
 std::vector< std::pair< Point< value_t >, Point< value_t > > >  
-get_extreme_points( const std::set< Point< value_t > > &vertices ) {
+get_extreme_points( const std::vector< Point< value_t > > &vertices ) {
 
     if ( vertices.empty() )
         return {};
