@@ -131,7 +131,7 @@ public:
             for ( const auto &v2 : rhs_vertices ) {
                 Point< value_t > v1_copy( v1 );
                 add( v1_copy, v2  );
-                new_vertices.emplace_back( v1 );
+                new_vertices.emplace_back( v1_copy );
             }
         }
 

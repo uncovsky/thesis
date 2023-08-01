@@ -213,8 +213,6 @@ class BRTDPSolver{
         result.multiply_bounds( discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
 
-        std::cout << " LENGTH " << result.lower().get_vertices().size();
-
         env.set_bound( s, a, std::move( result ) );
     }
 
@@ -257,7 +255,6 @@ public:
         while ( env.get_state_bound( starting_state ).bound_distance( minimal_value ) >= precision ) {
             std::cout << "episode #" << episode << "\n";
             TrajectoryStack trajectory = sample_trajectory( maximal_value, precision );
-            size_t i = 1;
             update_along_trajectory( trajectory, starting_state );
             std::cout << env.get_state_bound( starting_state ).bound_distance( minimal_value ) << std::endl;
             episode++;

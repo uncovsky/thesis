@@ -43,7 +43,7 @@ void add( value_t scalar,
 
 template < typename value_t > 
 void multiply( std::vector< value_t > &lhs , 
-                                 const std::vector< value_t > &rhs ) {
+               const std::vector< value_t > &rhs ) {
 
     assert( lhs.size() == rhs.size() );
     for ( size_t i = 0; i < rhs.size(); i++ ){
