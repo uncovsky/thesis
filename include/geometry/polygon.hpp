@@ -116,7 +116,6 @@ public:
 
     }
 
-    // TODO more efficiently ( use the fact both are convex )
     void minkowski_sum( const Polygon &rhs ) {
         std::vector< Point< value_t > > new_vertices;
         const std::vector< Point< value_t > > &rhs_vertices = rhs.get_vertices();
@@ -139,25 +138,57 @@ public:
         vertices = std::move( new_vertices );
     }
 
+    void remove_eps_close( value_t eps ) {
+        for ( auto it = vertices.begin(); it != vertices.end(); it++ ){
+            for ( auto s_it = std::next( it, 1 ); s_it != vertices.end(); ) {
+                if ( euclidean_distance( *s_it, *it ) < eps ) { s_it = vertices.erase( s_it ); }
+                else { s_it++; }
+            }
+        }
+    }
+
     // downward closure for 1/2 dimensions
     // preconditions:
-    // nondominated elems removed, convex_hull called bforehand
+    //  array vertices contains only nondominated elements
+    //  vertices form a convex polygon ( so convex_hull has been called
+    //  beforehand )
+    // reference point contains minimal values for each objective
     void downward_closure( const Point< value_t > &reference_point ) {
         assert ( reference_point.size() < 3 );
 
-        // nothing to be done in 0d/1d case
-        if ( reference_point.size() < 2 )
+        if ( reference_point.size() == 0 )
             return;
         if ( vertices.empty() )
             return;
 
         std::vector< LineSegment< value_t > > new_facets;
 
-        auto extreme_points = get_extreme_points( vertices );
+        if ( reference_point.size() == 1 ) {
+           // only one nondom vertex is possible 
+            new_facets.emplace_back( vertices[0], reference_point );
+        }
 
-        Point< value_t > max_x_point = extreme_points[0].second;
-        Point< value_t > max_y_point = extreme_points[1].second;
+        else {
 
+            auto extreme_points = get_extreme_points( vertices );
+
+            Point< value_t > max_x_point = extreme_points[0].second;
+            Point< value_t > max_y_point = extreme_points[1].second;
+
+            new_facets = std::move( facets );
+
+            // just add two line segments from extremal points of the curve for now
+            // need to also delete facets that are now interior, todo later, 
+            // but shouldn't matter with distance calculations 
+            Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
+            Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
+
+            new_facets.emplace_back( facet_x, max_x_point );
+            new_facets.emplace_back( facet_y, max_y_point );
+
+        }
+
+        facets = std::move( new_facets );
     }
 
 
@@ -183,13 +214,13 @@ public:
 
             return;
         }
+        
 
         std::vector< Point< value_t > > result = quickhull( vertices );
         std::vector< LineSegment< value_t > > new_facets;
 
         size_t vertex_count = result.size();
 
-        // vertices are sorted in ccw order
         for ( size_t i = 0; i < vertex_count - 1; i++ ) {
             new_facets.emplace_back( result[i], result[i + 1] );
         }
@@ -197,7 +228,9 @@ public:
         if ( vertex_count > 1 )
             new_facets.emplace_back( result.back(), result[0] );
 
-        vertices = result;
+        std::vector< Point< value_t > > new_vertices( result.begin(), result.end() );
+
+        vertices = new_vertices;
         facets = new_facets;
     }
 
