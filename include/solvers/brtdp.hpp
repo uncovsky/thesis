@@ -49,6 +49,7 @@ class BRTDPSolver{
      * 1) look at upper bounds of available actions
      * 2) select action uniformly from all actions that have >= 1 nondominated
      * vector in their upper bound across avail_actions 
+     * TODO: fix segfault
      */
     action_t pareto_action( state_t s, const std::vector< action_t > &avail_actions ) {
 
