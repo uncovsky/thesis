@@ -84,7 +84,7 @@ struct TripletList {
             eigen_triplets.emplace_back( a, s, val );
         }
 
-        Matrix2D<double> result( max_a + 1, max_s + 1 );
+        Matrix2D<double> result( max_a, max_s );
         result.setFromTriplets( eigen_triplets.begin(), eigen_triplets.end() );
 
         return result;
@@ -129,14 +129,9 @@ class PrismParser {
     bool check( int (* callback)( int ));
 
     bool remove_all( int (* callback)( int ) );
-
     std::tuple< size_t, size_t, size_t > match_triplet();
     void match_reward();
     void match_transition();
-
-    bool ignore_line( const std::string &line );
-    size_t string_to_ull( const std::string &input );
-
 
 public:
     // only transition rewards supported
@@ -145,4 +140,17 @@ public:
     MDP< double > build_model( size_t initial_state );
 };
 
+
+// TODO: remove whitespace bfore checknig
+bool ignore_line( const std::string &line) {
+    return line.empty() || ( line[0] == '#' ) ;
+}
+
+size_t string_to_ull( const std::string &input ) {
+    std::istringstream iss(input);
+    size_t size;
+    iss >> size;
+
+    return size;
+}
 

@@ -14,7 +14,6 @@
  *  build the model from triplets
  */
 
-
 bool PrismParser::eol() const {
     return curr == end;
 }
@@ -29,12 +28,12 @@ char PrismParser::get_token() {
 std::string PrismParser::load_number( ) {
     std::string id;
     char token = get_token();
-    require( std::isdigit() );
+    require( std::isdigit );
     id.push_back( token );
 
     token = get_token();
 
-    while ( check( std::isdigit() ) ) {
+    while ( check( std::isdigit ) ) {
         id.push_back( token );
         token = get_token();
     }
@@ -48,7 +47,7 @@ double PrismParser::load_float(){
     std::string decimal;
 
     flt.push_back( get_token() );
-    require( std::isdigit() );
+    require( std::isdigit );
     
     if ( check( '.' ) ){
         decimal = load_number();
@@ -78,16 +77,16 @@ size_t PrismParser::translate( const std::string& name, bool state ){
 }
 
 std::tuple< size_t, size_t, size_t > PrismParser::match_triplet(){
-    remove_all( std::isspace() );
+    remove_all( std::isspace );
 
     std::string s = load_number();
-    remove_all( std::isspace() );
+    remove_all( std::isspace );
 
     std::string a = load_number();
-    remove_all( std::isspace() );
+    remove_all( std::isspace );
 
     std::string succ = load_number();
-    remove_all( std::isspace() );
+    remove_all( std::isspace );
 
     // convert relevant info to numbers
     size_t s_id = translate( s, true );
@@ -103,12 +102,11 @@ void PrismParser::match_transition( ){
     auto [ s_id, a_id, succ_id ] = match_triplet();
     double p = load_float();
 
-
-    if ( ( prob <= 0 ) || ( prob > 1 ) ) {
+    if ( ( p <= 0 ) || ( p > 1 ) ) {
         throw ParsingError( line_num, "Invalid transition probability\n" );
     }
 
-    remove_all( std::isspace() );
+    remove_all( std::isspace );
     require( '\0' );
 
     transition_info[ s_id ].add_triplet( a_id, succ_id, p );
@@ -118,35 +116,54 @@ void PrismParser::match_reward( ){
     auto [ s_id, a_id, succ_id ] = match_triplet();
 
     if ( ( transition_info.find( s_id ) == transition_info.end() ) ||
-         ( !transition_info.contains( a_id, succ_id ) ) ) {
-        throw ParsingError( line_num, "This reward transition is not present in the transition file.\n" )
+         ( !transition_info[s_id].contains( a_id, succ_id ) ) ) {
+        throw ParsingError( line_num, "This reward transition is not present in the transition file.\n" );
     }
 
     double reward = load_float();
-    remove_all( std::isspace() );
+    remove_all( std::isspace );
     require( '\0' );
     
-    reward_structures.back()[ s_id ].add_triplet( a_id, succ_id, reward );
+    // REDUCE TO SxA reward
+    auto idx = std::make_pair( a_id, succ_id );
+
+    // weigh reward by probability 
+    reward *= transition_info[ s_id ].triplets[ idx ];
+
+    auto &reward_structure = reward_info.back();
+
+    if ( reward_structure.contains( a_id, s_id ) ){
+        idx = std::make_pair( a_id, s_id );
+        reward_structure.triplets[idx] += reward;
+    }
+
+    else { reward_structure.add_triplet( a_id, s_id, reward ); }
 }
 
 
 void PrismParser::parse_transition_file( const std::string &filename ){
     std::ifstream input_str( filename );
+    if ( input_str.fail() ) {
+        throw ParsingError( 0, "Transition file" + filename + " does not exist." );
+    }
 
-    while ( std::getline( input_str ), line ) {
+    while ( std::getline( input_str, line ) ) {
         line_num++;
         // set iterators
-        curr = line.begin();
-        end  = line.end();
-        // match transition
-        match_transition();
+        if ( !ignore_line( line ) ) {
+            curr = line.begin();
+            end  = line.end();
+            // match transition
+            match_transition();
+        
+        }
     }
 
     // TODO: could maintain reverse mappings ( from indices to original state
     // names in the file ) for better error messages
     for ( const auto &[ id, data ] : transition_info ){
         if ( !data.valid_probabilities() ){
-            throw ParsingError(0, "invalid transition probabilities for state mapped to index " + id + " \n");
+            throw ParsingError(0, "invalid transition probabilities for state mapped to index " + std::to_string( id ) + " \n");
         }
     }
 }
@@ -154,22 +171,29 @@ void PrismParser::parse_transition_file( const std::string &filename ){
 
 void PrismParser::parse_reward_file( const std::string &filename ){
 
-    reward_structures.push_back({});
+
+    reward_info.push_back({});
     std::ifstream input_str( filename );
 
-    while ( std::getline( input_str ), line ) {
-        line_num++;
-        curr = line.begin();
-        end  = line.end();
-        match_reward();
+    if ( input_str.fail() ) {
+        throw ParsingError( 0, "Reward file" + filename + " does not exist." );
+    }
+
+    while ( std::getline( input_str, line ) ) {
+        if ( !ignore_line( line ) ) {
+            curr = line.begin();
+            end  = line.end();
+            // match transition
+            match_reward();
+        }
     }
 
     // TODO: set misssing rewards as zero
 }
 
 
-bool PrismParser::check( int (* callback)( char ) ){
-    if callback( get_token() ) {
+bool PrismParser::check( int (* callback)( int ) ){
+    if ( callback( get_token() ) ) {
         curr++;
         return true;
     }
@@ -188,25 +212,70 @@ bool PrismParser::check( char token ){
 }
 
 // match all tokens
-bool PrismParser::remove_all( int (* callback)( char ) ){
+bool PrismParser::remove_all( int (* callback)( int ) ){
     bool matched_one = false;
 
-    while check( callback ) {
+    while ( check( callback ) ) {
         matched_one = true;
     }
 
     return matched_one;
 }
 
-
-
-
-void PrismParser::require( int (* callback)( char ) ){
+void PrismParser::require( int (* callback)( int ) ){
+    std::string str;
+    str.push_back( get_token() );
     if ( !check( callback ) )
-        throw ParsingError( line, "-> " + get_token()  " <- " + "required token mismatch.\n" )
+        throw ParsingError( line_num, "-> " + str + " <- " + "required token mismatch.\n" );
 }
 
 void PrismParser::require( char token ){
+    std::string str;
+    str.push_back( get_token() );
     if ( !check( token ) )
-        throw ParsingError( line, "-> " + get_token()  " <- " + "required token mismatch.\n" )
+        throw ParsingError( line_num , "-> " + str + " <- " + "required token mismatch.\n" );
+}
+
+// initial state given here is the number present in the file, not the index
+// its mapped to in parser struct
+MDP< double > PrismParser::build_model( size_t initial_state ){
+
+    Matrix3D< double > transitions;
+
+    for ( size_t i = 0; i < transition_info.size(); i++ ) {
+        transitions.emplace_back( transition_info[i].build_matrix() );
+    }
+
+    Matrix3D< double > rewards;
+    std::pair< std::vector< double >, std::vector< double > > bounds;
+    
+    for ( size_t i = 0; i < reward_info.size(); i++ ) {
+        rewards.emplace_back( reward_info[i].build_matrix() );
+
+        auto [ min, max ] = reward_info[i].get_min_max_value();
+        auto& [ min_vec, max_vec ] = bounds;
+
+        min_vec.push_back( min );
+        max_vec.push_back( max );
+    }
+
+
+    return MDP< double >( std::move( transitions ),
+                          std::move( rewards ), 
+                          bounds, 
+                          initial_state );
+}
+
+// TODO: remove whitespace bfore checknig
+bool PrismParser::ignore_line( const std::string &line) {
+    return line.empty() || ( line[0] == '#' ) ;
+}
+
+size_t PrismParser::string_to_ull( const std::string &input ) {
+
+    std::istringstream iss(input);
+    size_t size;
+    iss >> size;
+
+    return size;
 }

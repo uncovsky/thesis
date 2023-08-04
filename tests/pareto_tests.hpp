@@ -1,11 +1,8 @@
 # pragma once
+# include <cassert>
 
 # include "geometry/pareto.hpp"
 # include "utils/eigen_types.hpp"
-# include <cassert>
-
-
-
 
 
 void test_nondominated(  ){

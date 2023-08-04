@@ -33,29 +33,29 @@ MDP< double > build_simple_mdp( ) {
     transitions[3].insert(0, 3) = 1.0;
     transitions[4].insert(0, 4) = 1.0;
 
-    rewards.push_back( Matrix2D< double >(5, 2) );
-    rewards.push_back( Matrix2D< double >(5, 2) );
+    rewards.push_back( Matrix2D< double >(2, 5) );
+    rewards.push_back( Matrix2D< double >(2, 5) );
 
     // first component of reward for action 0/1 in state 0
     rewards[0].insert( 0, 0 ) = 3.0;
-    rewards[0].insert( 0, 1 ) = 1.0;
+    rewards[0].insert( 1, 0 ) = 1.0;
 
     // second component
     rewards[1].insert( 0, 0 ) = 1.0;
-    rewards[1].insert( 0, 1 ) = 1.0;
-
-    // rewards from states 1 and 2 are (1, 1)
-    rewards[0].insert( 1, 0 ) = 1.0;
     rewards[1].insert( 1, 0 ) = 1.0;
 
-    rewards[0].insert( 2, 0 ) = 1.0;
-    rewards[1].insert( 2, 0 ) = 1.0;
+    // rewards from states 1 and 2 are (1, 1)
+    rewards[0].insert( 0, 1 ) = 1.0;
+    rewards[1].insert( 0, 1 ) = 1.0;
+
+    rewards[0].insert( 0, 2 ) = 1.0;
+    rewards[1].insert( 0, 2 ) = 1.0;
 
     // terminal states have rewards (0, 1), (1, 0)
-    rewards[0].insert( 3, 0 ) = 1.0;
-    rewards[1].insert( 3, 0 ) = 0.0;
-    rewards[0].insert( 4, 0 ) = 0.0;
-    rewards[1].insert( 4, 0 ) = 1.0;
+    rewards[0].insert( 0, 3 ) = 1.0;
+    rewards[1].insert( 0, 3 ) = 0.0;
+    rewards[0].insert( 0, 4 ) = 0.0;
+    rewards[1].insert( 0, 4 ) = 1.0;
 
     // third argument is the reward bounds
     MDP<double> mdp( transitions,
@@ -88,13 +88,13 @@ MDP< double > test2 () {
     rewards.push_back( Matrix2D< double >(2, 2) );
 
     rewards[0].insert( 0, 0 ) = 1.0;
-    rewards[0].insert( 1, 0 ) = 1.0;
-    rewards[0].insert( 0, 1 ) = 0.0;
+    rewards[0].insert( 0, 1 ) = 1.0;
+    rewards[0].insert( 1, 0 ) = 0.0;
     rewards[0].insert( 1, 1 ) = 0.0;
 
     rewards[1].insert( 0, 0 ) = 0.0;
-    rewards[1].insert( 1, 0 ) = 0.0;
-    rewards[1].insert( 0, 1 ) = 1.0;
+    rewards[1].insert( 0, 1 ) = 0.0;
+    rewards[1].insert( 1, 0 ) = 1.0;
     rewards[1].insert( 1, 1 ) = 1.0;
 
 

@@ -29,10 +29,16 @@ class MDP : public Environment< size_t, size_t , std::vector< reward_t > > {
     // reward bounds for each objective
     std::pair< reward_vec, reward_vec > reward_bounds;
 
-    // S x A x S - \delta(s,a,s'), transition matrix of probabilities
+    /* S x A x S - \delta(s,a,s'), transition matrix of probabilities
+     * transitions[i] -> transition matrix of given state i (A x S), where A
+     * are permitted actions in state i 
+     */
     TransitionMatrix transitions;
 
-    // (S x A) -> reward for each reward model
+    /* (A x S) -> reward, vector for each reward model ( each dimension )
+     * rows of the respective matrices correspond to action indices
+     * for consistency with the transition matrices */
+
     RewardMatrix reward_models;
 
     PRNG gen;
@@ -79,7 +85,8 @@ public:
     std::vector< size_t > get_actions( size_t state ) const override {
 
         std::vector< size_t > available_actions;
-
+        
+        /* actions are saved in rows for easy traversal of successors */
         for ( size_t i = 0; i < transitions[state].outerSize(); ++i ) {
 
             Matrix2D< double >::InnerIterator it( transitions[state], i );
@@ -130,7 +137,7 @@ public:
         reward_vec rew;
         
         for ( auto& reward_model : reward_models ) {
-            rew.push_back( reward_model.coeffRef( state, action ) );
+            rew.push_back( reward_model.coeffRef( action, state ) );
         }
 
         return rew;
