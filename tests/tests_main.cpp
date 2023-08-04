@@ -17,8 +17,8 @@ int main() {
     test_convex_hull();
     std::cout << "Success!\n\n\n";
 
-    std::cout << "NOT TESTING hausdorff distance..\n";
-    // test_hausdorff_distance();
+    std::cout << "Testing hausdorff distance..\n";
+    test_hausdorff_distance();
     std::cout << "Success!\n\n\n";
 
     std::cout << "Testing brtdp..\n";
