@@ -1,3 +1,4 @@
+# include <iostream>
 # include "parser.hpp"
 
 /* first pass
@@ -25,7 +26,7 @@ char PrismParser::get_token() {
 
 
 // accepts strings of digits of length >= 1 ( initial zeroes allowed )
-std::string PrismParser::load_number( ) {
+std::string PrismParser::load_unsigned( ) {
     std::string id;
     char token = get_token();
     require( std::isdigit );
@@ -41,17 +42,29 @@ std::string PrismParser::load_number( ) {
     return id;
 }
 
+
 // accepts and loads a floating point number
+// TODO: fxi this
 double PrismParser::load_float(){
     std::string flt;
-    std::string decimal;
+
+    if ( check( '-' ) ) {
+        flt += '-';
+    }
 
     flt.push_back( get_token() );
     require( std::isdigit );
     
     if ( check( '.' ) ){
-        decimal = load_number();
-        flt += '.' + decimal;
+        flt += '.' + load_unsigned();
+    }
+    
+    else {
+        char tok = get_token();
+        while( check( std::isdigit ) ) {
+            flt.push_back( tok );
+            tok = get_token();
+        }
     }
 
     return std::stod( flt );
@@ -76,19 +89,22 @@ size_t PrismParser::translate( const std::string& name, bool state ){
     return target[ id ];
 }
 
+// PRISM format (differs from storm by order s, succ, a rather than s, a, succ
+// and also some additional hints for the file ( # states, #transitions, which
+// we ignore anyway )
 std::tuple< size_t, size_t, size_t > PrismParser::match_triplet(){
     remove_all( std::isspace );
 
-    std::string s = load_number();
+    std::string s = load_unsigned();
     remove_all( std::isspace );
 
-    std::string a = load_number();
+    std::string a = load_unsigned();
     remove_all( std::isspace );
 
-    std::string succ = load_number();
+    std::string succ = load_unsigned();
     remove_all( std::isspace );
 
-    // convert relevant info to numbers
+    // convert relevant info to indices
     size_t s_id = translate( s, true );
     size_t succ_id = translate( succ, true );
     size_t a_id = translate( a, false );
@@ -106,8 +122,12 @@ void PrismParser::match_transition( ){
         throw ParsingError( line_num, "Invalid transition probability\n" );
     }
 
+    /* 
+     * transition files may contain labels, so this is incorrect, could handle
+     * in some other way layer
     remove_all( std::isspace );
     require( '\0' );
+    */
 
     transition_info[ s_id ].add_triplet( a_id, succ_id, p );
 }
@@ -128,7 +148,9 @@ void PrismParser::match_reward( ){
     auto idx = std::make_pair( a_id, succ_id );
 
     // weigh reward by probability 
+    //
     reward *= transition_info[ s_id ].triplets[ idx ];
+
 
     auto &reward_structure = reward_info.back();
 
@@ -138,6 +160,7 @@ void PrismParser::match_reward( ){
     }
 
     else { reward_structure.add_triplet( a_id, s_id, reward ); }
+    auto [ _, max ] = reward_structure.get_min_max_value();
 }
 
 
@@ -146,6 +169,9 @@ void PrismParser::parse_transition_file( const std::string &filename ){
     if ( input_str.fail() ) {
         throw ParsingError( 0, "Transition file" + filename + " does not exist." );
     }
+
+    line_num = 0;
+    transition_info.clear();
 
     while ( std::getline( input_str, line ) ) {
         line_num++;
@@ -179,11 +205,12 @@ void PrismParser::parse_reward_file( const std::string &filename ){
         throw ParsingError( 0, "Reward file" + filename + " does not exist." );
     }
 
+    line_num = 0;
     while ( std::getline( input_str, line ) ) {
+        line_num++;
         if ( !ignore_line( line ) ) {
             curr = line.begin();
             end  = line.end();
-            // match transition
             match_reward();
         }
     }
@@ -264,6 +291,30 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
                           std::move( rewards ), 
                           bounds, 
                           initial_state );
+}
+
+
+MDP< double > PrismParser::parse_model( const std::string &transition_file,
+                                        const std::vector< std::string > &reward_files,
+                                        size_t initial_state ) {
+    //new model -> new rewards, transitions get reset in parse transition file
+    reward_info.clear();
+
+    try{
+
+        std::cout << "Parsing " << transition_file << std::endl;
+        parse_transition_file( transition_file );
+        for ( const auto &str : reward_files ){
+            std::cout << "Parsing " << str << std::endl;
+            parse_reward_file( str );
+        }
+        return build_model( initial_state );
+    }
+
+    catch ( const ParsingError &e ) {
+        std::cout << e.what() << std::endl;
+        throw e;
+    }
 }
 
 // TODO: remove whitespace bfore checknig

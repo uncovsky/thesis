@@ -135,9 +135,12 @@ public:
     reward_vec get_reward( size_t state, size_t action ) override{
 
         reward_vec rew;
-        
         for ( auto& reward_model : reward_models ) {
-            rew.push_back( reward_model.coeffRef( action, state ) );
+            // empty entries are implicit zeroes
+            if ( ( action < reward_model.rows() ) && ( state < reward_model.cols() ) )
+                rew.push_back( reward_model.coeffRef( action, state ) );
+            else 
+                rew.push_back( 0 );
         }
 
         return rew;

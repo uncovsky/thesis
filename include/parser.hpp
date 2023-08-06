@@ -21,8 +21,9 @@ struct ParsingError {
     size_t line_num;
     std::string msg;
 
-    const char *what() {
+    const char *what() const {
         std::string line_msg = "Error on line " + std::to_string( line_num ) + " - ";
+        std::cout << line_msg + msg << std::endl;
         return ( line_msg + msg ).c_str();
     }
 
@@ -56,18 +57,17 @@ struct TripletList {
     }
 
     bool valid_probabilities() const {
-        for ( const auto &[ a, prob ] : triplets ) {
+        for ( const auto &[ a, prob ] : prob_sums ) {
             if ( !approx_equal( prob, 1.0 ) )
                 return false;
         }
-        
         return true;
     }
 
     std::pair< double, double> get_min_max_value() {
         if ( triplets.empty() )
             return { 0, 0 };
-        const auto [ min, max ] = std::minmax_element( triplets.begin(), triplets.end());
+        const auto [ min, max ] = std::minmax_element( triplets.begin(), triplets.end(), []( const auto &a, const auto &b ) { return a.second < b.second; } );
         // get associated values
         return std::make_pair( min->second, max->second );
     }
@@ -119,7 +119,7 @@ class PrismParser {
     char get_token( );
 
     size_t translate( const std::string &name, bool state );
-    std::string load_number();
+    std::string load_unsigned();
     double load_float();
 
     void require( char token );
@@ -143,6 +143,9 @@ public:
     void parse_transition_file( const std::string &filename );
     void parse_reward_file( const std::string &filename );
     MDP< double > build_model( size_t initial_state );
+    MDP< double > parse_model( const std::string &transition_files,
+                               const std::vector< std::string > &reward_files,
+                               size_t initial_state );
 };
 
 

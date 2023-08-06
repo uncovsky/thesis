@@ -279,7 +279,6 @@ public:
 
         }
 
-
         return start_bound;
     }
 
