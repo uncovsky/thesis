@@ -17,7 +17,8 @@
 ### Implemented so far
 	Env interface, Sparse MDP model + all interaction/statistics
  	2D pareto curve representation + associated operations
-  	brtdp algorithm implementing the VI updates ( + heuristics for successor state sampling, pareto criterion for action selection )
+  	brtdp algorithm implementing the VI updates 
+			( + heuristics for successor state sampling, pareto criterion for action selection )
    	parser for PRISM format of explicit transition & reward files
 
 ### TODO, issues:
