@@ -35,6 +35,8 @@ struct ParsingError {
 struct TripletList { 
 
     // map ( S x ) A -> double to ensure probabilities sum to approx 1
+    // TODO: utilize this in parsing reward files and set missing SxA-rewards to
+    // zero
     std::map< size_t , double > prob_sums;
 
     std::map< std::pair< size_t, size_t > , double > triplets;
@@ -118,9 +120,18 @@ class PrismParser {
     bool eol() const;
     char get_token( );
 
+    /* state names are mapped to first available indices
+     * maybe unnecessary, but the format does not guarantee that state indices
+     * start from 0 and this could later lead to allocating more memory then
+     * needed */
     size_t translate( const std::string &name, bool state );
+
+    /* helper functions for parsing */
     std::string load_unsigned();
     double load_float();
+
+    bool ignore_line( const std::string &line );
+    size_t string_to_ull( const std::string &input );
 
     void require( char token );
     void require( int (* callback )( int ));
@@ -130,19 +141,22 @@ class PrismParser {
 
     bool remove_all( int (* callback)( int ) );
 
+    
     std::tuple< size_t, size_t, size_t > match_triplet();
+
     void match_reward();
     void match_transition();
 
-    bool ignore_line( const std::string &line );
-    size_t string_to_ull( const std::string &input );
-
-
-public:
     // only transition rewards supported
     void parse_transition_file( const std::string &filename );
     void parse_reward_file( const std::string &filename );
+
+
+
+public:
     MDP< double > build_model( size_t initial_state );
+
+    // function used to parse and build a model from transition and reward
     MDP< double > parse_model( const std::string &transition_files,
                                const std::vector< std::string > &reward_files,
                                size_t initial_state );

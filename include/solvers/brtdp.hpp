@@ -34,11 +34,17 @@ class BRTDPSolver{
     // supported as of now )
     std::vector< value_t > discount_params;
 
-    // TODO: eliminate the need for uniform action, isntead utilize
-    // uniform_index
+    /* helper functions for uniform sampling of actions/states
+     * TODO: eliminate the need for uniform action, isntead utilize
+     * uniform_index
+     */
     action_t uniform_index( const std::vector< size_t > &indices ) {
         return indices[ gen.rand_int( 0, indices.size() ) ];
     }
+
+    /*
+     * ACTION HEURISTICS 
+     */
 
     action_t uniform_action( const std::vector< action_t > &avail_actions ) {
         return avail_actions[ gen.rand_int( 0, avail_actions.size() ) ];
@@ -104,18 +110,13 @@ class BRTDPSolver{
         return uniform_action( pareto_actions );
         
     }
-
-    action_t action_selection( state_t s, const std::vector< action_t > &avail_actions ) {
-
-        if ( action_heuristic == ActionSelectionHeuristic::Uniform ) {
-            return uniform_action( avail_actions );
-        }
-        
-        // only these two supported right now
-        return pareto_action( s, avail_actions );
-
-    }
-
+    /*
+     * SUCCESSOR HEURISTICS 
+     *
+     * BRTDP heuristic for successor selection, uniformly samples from
+     * successors maximizing weighted difference of their state bounds 
+     * argmax ( delta( s, a , s' ) * ( dist_H( L_i( s' ), U_i( s' ) ) ) )
+     */
     state_t bound_difference_state_selection( const std::map< state_t, double > &transitions ) {
 
         auto [ min_value, _ ] = env.min_max_discounted_reward();
@@ -137,6 +138,19 @@ class BRTDPSolver{
         return std::next( transitions.begin(), chosen_index )->first;
     }
 
+    // picks action from avail actions based on specified heuristic
+    action_t action_selection( state_t s, const std::vector< action_t > &avail_actions ) {
+
+        if ( action_heuristic == ActionSelectionHeuristic::Uniform ) {
+            return uniform_action( avail_actions );
+        }
+        
+        // only these two supported right now
+        return pareto_action( s, avail_actions );
+
+    }
+
+
     state_t state_selection( const std::map< state_t, double > &transitions ) {
 
         if ( state_heuristic == StateSelectionHeuristic::BRTDP ) {
@@ -146,7 +160,10 @@ class BRTDPSolver{
         return gen.sample_distribution( transitions );
     }
                                
-
+    /*
+     * samples an MDP trajectory using specified action/successor heuristics
+     * and precision, initializing newly encountered state action bounds
+     */
     TrajectoryStack sample_trajectory( const std::vector< value_t > &max_value,
                                                           value_t precision ) {
         
@@ -200,6 +217,7 @@ class BRTDPSolver{
         
     }
 
+    /* BRTDP update of L(s,a) and U(s, a) */
     void update_bounds( state_t s, action_t a ) {
         std::map< state_t, double > transitions = env.get_transition( s, a );
 
@@ -217,6 +235,7 @@ class BRTDPSolver{
         env.set_bound( s, a, std::move( result ) );
     }
 
+    /* executes BRTDP updates for the whole sampled trajectory */
     void update_along_trajectory( TrajectoryStack& trajectory, state_t starting_state ) {
         while ( !trajectory.empty() ) {
             auto [ a, successor ] = trajectory.top();
@@ -237,7 +256,12 @@ public:
                                         gen( ), 
                                         discount_params( discount_params ) {  }
 
-    // returns objective bounds on the initial state
+    /* the main BRTDP solver function, samples trajectories and updates bounds
+     * until the distance of starting state bounds is less than specified
+     * precision, uses discount values specified in constructor 
+     * outputs the bound ( pareto objects ) into text files, sampled
+     * trajectories during execution and number of discovered states at the end
+     */
     Bounds< value_t > solve( value_t precision ) {
 
         size_t starting_state = std::get< 0 > ( env.reset( 0 ) );

@@ -81,6 +81,7 @@ public:
         nondominated();
     }
 
+    // helper functions for multiplying/adding scalars/vectors to all entries
     void multiply_bounds( value_t mult ) {
         lower_bound.multiply_scalar( mult );
         upper_bound.multiply_scalar( mult );
@@ -145,6 +146,7 @@ public:
 
     using Observation = typename Environment< state_t, action_t, reward_t > :: Observation;
 
+    /* interaction with the underlying environment */
     state_t get_current_state() const {
         return env->get_current_state();
     }
@@ -169,11 +171,34 @@ public:
         return env->get_reward( s, a );
     }
 
+    std::pair< reward_t, reward_t > reward_range() const {
+        return env->reward_range();
+    }
+
     void clear_records(){
         state_action_bounds.clear();
         discovered_states.clear();
     }
 
+    Observation reset( unsigned seed=0, bool reset_records=true ) {
+        if (reset_records) { clear_records(); }
+        return env->reset( seed );
+    }
+
+
+    Observation step( action_t action ) {
+        state_t current_state = get_current_state();
+
+        discover( current_state );
+
+        auto [ next_state, reward, terminated ] = env->step( action );
+
+        return { next_state , reward, terminated };
+    }
+    
+    /* returns min/max possible objective ( discounted sum ) value given the
+     * min/max reward bounds 
+     */
     std::pair< std::vector< value_t >, std::vector< value_t > > min_max_discounted_reward() {
 
         auto [ min, max ] = reward_range();
@@ -191,6 +216,7 @@ public:
         return std::make_pair( min, max );
     }
 
+    /* initializes L_0(s, a), U_0(s, a) */
     void init_bound( state_t s, action_t a ) {
 
         auto [ lower_bound_pt, upper_bound_pt ] = min_max_discounted_reward();
@@ -200,15 +226,14 @@ public:
         state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( std::move( result ) );
     }
 
-    std::pair< reward_t, reward_t > reward_range() const {
-        return env->reward_range();
-    }
-
     /* function that discovers a given state and initializes states for all its
      * available actions, if it has not been discovered in previous simulations
      * also rewrites all already set bounds for given state
+     *
+     * we use discovered states to track how many states BRTDP has visited /
+     * updated bound estimates over its execution vs how many total states the
+     * MDP has
      */
-
     void discover( state_t s ) {
         if ( discovered_states.find( s ) == discovered_states.end() ) {
             discovered_states.insert( s );
@@ -218,6 +243,8 @@ public:
         }
     }
 
+    /* if all transitions from given state ( under every action ) result in
+     * staying in given state with probability 1, then the state is terminal */
     bool is_terminal_state( state_t state ) const {
         std::vector< action_t > avail_actions = get_actions( state );
         for ( size_t action : avail_actions ) {
@@ -236,6 +263,7 @@ public:
         return true;
     }
 
+    // returns L_i(s), U_i(s)
     Bounds< value_t > get_state_bound( state_t s ) {
         discover( s );
         std::vector< action_t > avail_actions = get_actions( s );
@@ -270,21 +298,6 @@ public:
         discount_params = gammas;
     }
 
-    Observation reset( unsigned seed=0, bool reset_records=true ) {
-        if (reset_records) { clear_records(); }
-        return env->reset( seed );
-    }
-
-
-    Observation step( action_t action ) {
-        state_t current_state = get_current_state();
-
-        discover( current_state );
-
-        auto [ next_state, reward, terminated ] = env->step( action );
-
-        return { next_state , reward, terminated };
-    }
 
     void write_statistics(){
         std::cout << "States discovered: " << discovered_states.size() << "\n";
