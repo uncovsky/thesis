@@ -43,8 +43,6 @@ std::string PrismParser::load_unsigned( ) {
 }
 
 
-// accepts and loads a floating point number
-// TODO: fxi this
 double PrismParser::load_float(){
     std::string flt;
 
@@ -56,10 +54,12 @@ double PrismParser::load_float(){
     require( std::isdigit );
     
     if ( check( '.' ) ){
+        // if a dot is present, load >= 1 remaining digit
         flt += '.' + load_unsigned();
     }
     
     else {
+        // load remaining ( potentially zero digits )
         char tok = get_token();
         while( check( std::isdigit ) ) {
             flt.push_back( tok );
@@ -123,8 +123,8 @@ void PrismParser::match_transition( ){
     }
 
     /* 
-     * transition files may contain labels, so this is incorrect, could handle
-     * in some other way layer
+     * transition files may contain text labels, so this is incorrect, could handle
+     * in some other way later
     remove_all( std::isspace );
     require( '\0' );
     */
@@ -317,7 +317,6 @@ MDP< double > PrismParser::parse_model( const std::string &transition_file,
     }
 }
 
-// TODO: remove whitespace bfore checknig
 bool PrismParser::ignore_line( const std::string &line) {
     return line.empty() || ( line[0] == '#' ) ;
 }

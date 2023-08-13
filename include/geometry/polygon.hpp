@@ -14,14 +14,18 @@
 
 
 /*
- * 2D Convex polygon class ( implemented as a collection of points and
- * associated facets / line segments )
- * implemented:
- * convex hull operation that removes redundant points 
- * (i.e only keeps vertices of the convex hull) and sets facets (line segments)
+ * 2D polygon class to track the pareto curve, the curve is saved as its 
+ * vertices ( nondominated points after each update ).
  *
- * downward closure operation that simply adds two facets from extreme points after the
- * convex hull operation has run
+ * We make a few assumptions about the data:
+ *  - facets are only initialized after a call to convex_hull ( which also sets
+ *  vertices to ones of the hull )
+ *  - vertices contain only ( pareto ) nondominated points, represented as
+ *  vectors, all sharing the same dimensions
+ *
+ *  neither of these is limiting since we only need the facets to compute the
+ *  distance of two pareto curves ( so convex hull is called ), and all the
+ *  curves we make will be constructed from nondominated elems after updates
  */
 
 template < typename value_t >
@@ -75,19 +79,14 @@ public:
         return vertices;
     }
 
-    // hacky solution since points tracked as std::vectors,
-    // could change them to Eigen::Vectors / arrs and template the dims
     size_t get_dimension() const {
         if ( vertices.empty() ) 
             return 0;
-        
         Point< value_t > vertex = *( vertices.begin() );
-
         return vertex.size();
     }
 
     /* multiplication & addition, both element-wise and single elements */
-
     void multiply_scalar( value_t mult ) {
         for ( Point< value_t > &p : vertices ) {
             multiply( mult, p );
@@ -116,6 +115,8 @@ public:
 
     }
 
+    // TODO: use the fact that both polygons are convex, so its possible to
+    // compute in linear time instead of O(mn)
     void minkowski_sum( const Polygon &rhs ) {
         std::vector< Point< value_t > > new_vertices;
         const std::vector< Point< value_t > > &rhs_vertices = rhs.get_vertices();
@@ -136,15 +137,6 @@ public:
         }
 
         vertices = std::move( new_vertices );
-    }
-
-    void remove_eps_close( value_t eps ) {
-        for ( auto it = vertices.begin(); it != vertices.end(); it++ ){
-            for ( auto s_it = std::next( it, 1 ); s_it != vertices.end(); ) {
-                if ( euclidean_distance( *s_it, *it ) < eps ) { s_it = vertices.erase( s_it ); }
-                else { s_it++; }
-            }
-        }
     }
 
     // downward closure for 1/2 dimensions
@@ -195,8 +187,13 @@ public:
     // computes convex hull of vertices, removing all but the vertices forming
     // the hull. also correctly initializes facets 
     void convex_hull() {
+
         if ( vertices.empty() )
             return;
+        if ( get_dimension() > 2 ) {
+            std::cout << "Higher dimension convex hulls are currently unsupported." << std::endl;
+            assert( false );
+        }
 
         // handle one dimensional case, facets are just points
         if ( get_dimension() == 1 ) {
@@ -233,6 +230,60 @@ public:
         vertices = new_vertices;
         facets = new_facets;
     }
+
+
+    void pareto_convex_hull( const Point< value_t > &reference_point ) {
+
+        if ( vertices.empty() )
+            return;
+        if ( get_dimension() > 2 ) {
+            std::cout << "Higher dimension convex hulls are currently unsupported." << std::endl;
+            assert( false );
+        }
+
+        if ( get_dimension() == 1 ){
+
+            // only one nondominated vertex is possible
+            Point< value_t > pt = vertices[0];
+            facets = { LineSegment< value_t >( pt, pt ) };
+            return;
+        }
+
+        /* 
+         * 2D CASE
+         */
+        auto extreme_points = get_extreme_points( vertices );
+
+        Point< value_t > max_x_point = extreme_points[0].second;
+        Point< value_t > max_y_point = extreme_points[1].second;
+        
+        /* intersect the points with maximal x and y values with their
+         * respective axes, then add the reference point and calculate
+         * the convex hull with these three vertices added, to ensure all
+         * vertices that are not optimal for some weight w of the 
+         * objectives are removed */
+        Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
+        Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
+
+        vertices.push_back( reference_point );
+        vertices.push_back( facet_x );
+        vertices.push_back( facet_y );
+
+        // remove vertices not on the hull
+        vertices = quickhull( vertices );
+        size_t vertex_count = vertices.size();
+
+        /* only set to facets of the pareto curve, so in particular do not
+         * include facets that end in either of the three newly added points
+         * ( facet_x, facet_y, reference_point ), so that the hausdorff
+         * distance is correctly calculated, TODO: this is too hacky, fix */
+        for ( size_t i = 0; i < vertex_count; i++ ) {
+            // TODO
+        }
+    }
+
+
+
 
     void pareto( const Point< value_t >& ref_point ){
         convex_hull();
