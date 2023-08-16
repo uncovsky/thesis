@@ -15,7 +15,6 @@
 
 // checks whether point lhs is pareto dominated by rhs
 
-
 template < typename value_t >
 bool is_dominated( const Point< value_t > &lhs, 
                    const Point< value_t > &rhs ) {

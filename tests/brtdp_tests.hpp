@@ -164,6 +164,6 @@ void test_brtdp_on_simple_mdp() {
     assert( approx_set_equality( result.lower().get_vertices(), std::vector< std::vector< double > > ( { { 3, 1 } } ) ) );
     auto mdp2 = test2();
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap3( &mdp2 );
-    BRTDPSolver brtdp3( std::move( env_wrap3 ) , { 0.5, 0.5 } );
-    result = brtdp3.solve( 0.2 );
+    BRTDPSolver brtdp3( std::move( env_wrap3 ) , { 0.85, 0.85 } );
+    result = brtdp3.solve( 0.01 );
 }

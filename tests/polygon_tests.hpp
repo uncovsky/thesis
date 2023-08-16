@@ -96,9 +96,8 @@ bool check_hausdorff_distance( const std::vector< std::vector< value_t > > &lowe
                                value_t expected_distance ){
 
     Bounds< value_t > res( lower_vertices, upper_vertices );
-    std::cout << res.bound_distance( minimal_point ) << std::endl;
-    std::cout << res << std::endl;
-    return res.bound_distance( minimal_point ) == expected_distance;
+    res.pareto( minimal_point );
+    return res.bound_distance() == expected_distance;
 }
 
 

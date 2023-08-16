@@ -34,7 +34,7 @@ struct LineSegment {
         x2 = _x2;
     }
 
-    size_t get_dimensions( ) const {
+    size_t get_dimensions() const {
         assert ( x1.size() == x2.size() );
         return x1.size();
     }

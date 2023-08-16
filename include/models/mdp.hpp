@@ -7,9 +7,7 @@
 
  /* basic mdp class utilizing sparse matrices to 
   * store transition and reward function data
-  *
-  * todo perhaps add a generative model  (i.e. another one which doesnt have 
-  * to be constructed in memory entirely before exploration) */
+  */
 
 
 template < typename reward_t >
@@ -136,7 +134,11 @@ public:
 
         reward_vec rew;
         for ( auto& reward_model : reward_models ) {
-            // empty entries are implicit zeroes
+            /* empty entries are implicit zeroes, this is necessary since
+             * during model parsing we don't assign zero rewards to transitions
+             * with missing reward, but rather leave them empty for now 
+             * TODO: maybe fix this in the parser
+             */
             if ( ( action < reward_model.rows() ) && ( state < reward_model.cols() ) )
                 rew.push_back( reward_model.coeffRef( action, state ) );
             else 
@@ -184,7 +186,7 @@ public:
         reward_vec reward = get_reward( current_state, action );
 
         // index of successor state in sparse matrix row 
-        size_t next_state = gen.sample_distribution( get_transition(current_state, action) );
+        size_t next_state = gen.sample_distribution( get_transition( current_state, action ) );
 
         current_state = next_state;
 
@@ -195,13 +197,13 @@ public:
 
     Observation reset( unsigned seed ) override{
 
+        // zero seed -> random initialization
         if ( seed == 0 ) {  gen.seed(); }
         else            {  gen.seed( seed ); }
         
         current_state = initial_state;
 
         reward_vec default_rew( reward_models.size(), reward_t( 0 ) );
-
 
         return { initial_state , default_rew, is_terminal_state( initial_state ) };
     }

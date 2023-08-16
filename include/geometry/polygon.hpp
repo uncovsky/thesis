@@ -146,41 +146,36 @@ public:
     //  beforehand )
     // reference point contains minimal values for each objective
     void downward_closure( const Point< value_t > &reference_point ) {
-        assert ( reference_point.size() < 3 );
 
-        if ( reference_point.size() == 0 )
+        assert( get_dimension() == reference_point.size() );
+
+        if ( get_dimension() > 2 ) {
+            std::cout << "Higher dimension downward closures are currently unsupported." << std::endl;
+            assert( false );
+        }
+
+        /* 1d downward closure is irrelevant */
+        if ( reference_point.size() < 2 )
             return;
+
         if ( vertices.empty() )
             return;
 
-        std::vector< LineSegment< value_t > > new_facets;
+        auto extreme_points = get_extreme_points( vertices );
 
-        if ( reference_point.size() == 1 ) {
-           // only one nondom vertex is possible 
-            new_facets.emplace_back( vertices[0], reference_point );
-        }
+        Point< value_t > max_x_point = extreme_points[0].second;
+        Point< value_t > max_y_point = extreme_points[1].second;
 
-        else {
 
-            auto extreme_points = get_extreme_points( vertices );
+        // just add two line segments from extremal points of the curve for now
+        // also need to delete the facet between these two points, but this
+        // shouldn't matter with distance calculations and is more costly then
+        // just leaving it there
+        Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
+        Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
 
-            Point< value_t > max_x_point = extreme_points[0].second;
-            Point< value_t > max_y_point = extreme_points[1].second;
-
-            new_facets = std::move( facets );
-
-            // just add two line segments from extremal points of the curve for now
-            // need to also delete facets that are now interior, todo later, 
-            // but shouldn't matter with distance calculations 
-            Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
-            Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
-
-            new_facets.emplace_back( facet_x, max_x_point );
-            new_facets.emplace_back( facet_y, max_y_point );
-
-        }
-
-        facets = std::move( new_facets );
+        facets.emplace_back( facet_x, max_x_point );
+        facets.emplace_back( facet_y, max_y_point );
     }
 
 
@@ -195,20 +190,10 @@ public:
             assert( false );
         }
 
-        // handle one dimensional case, facets are just points
+        // handle one dimensional case, since only nondominated points, only
+        // one vertex is possible
         if ( get_dimension() == 1 ) {
-            auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
-
-            if ( min_x == max_x ) {
-                vertices = { min_x };
-                facets = { LineSegment< value_t > { min_x, min_x } };
-            }
-            else {
-                vertices = { min_x, max_x };
-                facets = { LineSegment< value_t > { min_x, min_x },
-                           LineSegment< value_t > { max_x, max_x }} ;
-            }
-
+            facets = { LineSegment< value_t >( vertices[0], vertices[0] ) };
             return;
         }
         
@@ -227,62 +212,9 @@ public:
 
         std::vector< Point< value_t > > new_vertices( result.begin(), result.end() );
 
-        vertices = new_vertices;
-        facets = new_facets;
+        vertices = std::move( new_vertices );
+        facets = std::move( new_facets );
     }
-
-
-    void pareto_convex_hull( const Point< value_t > &reference_point ) {
-
-        if ( vertices.empty() )
-            return;
-        if ( get_dimension() > 2 ) {
-            std::cout << "Higher dimension convex hulls are currently unsupported." << std::endl;
-            assert( false );
-        }
-
-        if ( get_dimension() == 1 ){
-
-            // only one nondominated vertex is possible
-            Point< value_t > pt = vertices[0];
-            facets = { LineSegment< value_t >( pt, pt ) };
-            return;
-        }
-
-        /* 
-         * 2D CASE
-         */
-        auto extreme_points = get_extreme_points( vertices );
-
-        Point< value_t > max_x_point = extreme_points[0].second;
-        Point< value_t > max_y_point = extreme_points[1].second;
-        
-        /* intersect the points with maximal x and y values with their
-         * respective axes, then add the reference point and calculate
-         * the convex hull with these three vertices added, to ensure all
-         * vertices that are not optimal for some weight w of the 
-         * objectives are removed */
-        Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
-        Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
-
-        vertices.push_back( reference_point );
-        vertices.push_back( facet_x );
-        vertices.push_back( facet_y );
-
-        // remove vertices not on the hull
-        vertices = quickhull( vertices );
-        size_t vertex_count = vertices.size();
-
-        /* only set to facets of the pareto curve, so in particular do not
-         * include facets that end in either of the three newly added points
-         * ( facet_x, facet_y, reference_point ), so that the hausdorff
-         * distance is correctly calculated, TODO: this is too hacky, fix */
-        for ( size_t i = 0; i < vertex_count; i++ ) {
-            // TODO
-        }
-    }
-
-
 
 
     void pareto( const Point< value_t >& ref_point ){
@@ -290,17 +222,16 @@ public:
         downward_closure( ref_point );
     }
 
-    // precondition: convex hull has been called beforehand, facets are
-    // correctly initialized
+    // precondition: pareto function has been called beforehand, facets are
+    // correctly initialized, input point is not dominated by any point on
+    // *this pareto curve
     value_t point_distance( const Point< value_t >& point ) const {
         if ( facets.empty() )
             return 0;
 
-        // handle one dimensional case, 
-        // at most 2 vertices after calling convex_hull()
+        // handle one dimensional case, only one vertex is possible again
         if ( get_dimension() == 1 ) {
-            auto [ min_x, max_x ] = get_extreme_points( vertices )[0];
-            return std::min( min_x[0] - point[0], max_x[0] - point[0] );
+            return point[0] - vertices[0][0];
         }
 
         LineSegment< value_t > first_facet = facets[0];

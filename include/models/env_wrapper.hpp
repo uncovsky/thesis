@@ -64,21 +64,22 @@ public:
     }
     
     // joins both bounds with other, which means taking a union of both of the
-    // vertex sets and removing dominated elements
+    // vertex sets
     void merge_bound( const Bounds< value_t > &other ) {
-        auto low_vertices_rhs = other.lower().get_vertices();
-        auto upp_vertices_rhs = other.upper().get_vertices();
+        auto low_rhs = other.lower().get_vertices();
+        auto upp_rhs = other.upper().get_vertices();
 
-        nondominated_union( lower_bound.get_vertices(), low_vertices_rhs );
-        nondominated_union( upper_bound.get_vertices(), upp_vertices_rhs );
+        auto& low_lhs = lower_bound.get_vertices();
+        auto& upp_lhs = upper_bound.get_vertices();
+
+        low_lhs.insert( low_lhs.end(), low_rhs.begin(), low_rhs.end() );
+        upp_lhs.insert( upp_lhs.end(), upp_rhs.begin(), upp_rhs.end() );
     }
 
     // performs a minkowski sum with each respective bound of other
     void sum_bounds( const Bounds< value_t > &other ){
         lower_bound.minkowski_sum( other.lower() );
         upper_bound.minkowski_sum( other.upper() );
-
-        nondominated();
     }
 
     // helper functions for multiplying/adding scalars/vectors to all entries
@@ -92,11 +93,6 @@ public:
         upper_bound.multiply_vector( mult );
     }
 
-    void shift_bounds( value_t shift ) {
-        lower_bound.shift_scalar( shift );
-        upper_bound.shift_scalar( shift );
-    }
-
     void shift_bounds( const std::vector< value_t > &shift ) {
         lower_bound.shift_vector( shift );
         upper_bound.shift_vector( shift );
@@ -104,9 +100,14 @@ public:
     
     // reference point is the min of all objectives ( theoretical lowest
     // possible value in objective space dominated by all other points )
-    value_t bound_distance( const std::vector< value_t > &ref_point ){
+    void pareto( const std::vector< value_t > &ref_point ) {
         lower_bound.pareto( ref_point );
-        upper_bound.convex_hull();
+        upper_bound.pareto( ref_point );
+    }
+
+    // input conditions -> pareto operator has been ran on *this ( pareto call
+    // preceded, omitting it here for performance reasons )
+    value_t bound_distance(){
         return lower_bound.hausdorff_distance( upper_bound );
     }
 
@@ -221,6 +222,10 @@ public:
 
         auto [ lower_bound_pt, upper_bound_pt ] = min_max_discounted_reward();
         Bounds< value_t > result ( { lower_bound_pt }, { upper_bound_pt } );
+        
+        // set facets correctly preemptively, since we need to compute distance
+        // with these bounds as well ( facets need to be set )
+        result.pareto( lower_bound_pt );
 
         auto idx = std::make_pair( s, a );
         state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( std::move( result ) );
@@ -274,9 +279,17 @@ public:
             result.merge_bound( action_bound );
         }
 
+        // remove dominated elements from result
+        result.nondominated();
+
+        // set facets and eliminate convex dominated points
+        auto [ ref_point, _ ] = min_max_discounted_reward();
+        result.pareto( ref_point );
+
         return result;
     }
 
+    // returns L_i(s, a), U_i(s, a)
     Bounds< value_t > get_state_action_bound( state_t s, action_t a ) {
         discover( s );
         auto idx = std::make_pair( s, a );
@@ -288,6 +301,7 @@ public:
         return *state_action_bounds[ idx ];
     }
    
+
 
     void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );

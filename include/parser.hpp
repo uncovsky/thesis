@@ -13,9 +13,15 @@
 # include "utils/random_utils.hpp"
 
 /*
- * parser for explicit model files ( mdps )
+ * Parser for the prism explicit MDP format
+ * See: https://www.prismmodelchecker.org/manual/Appendices/ExplicitModelFiles
+ * 
+ * Constructs an MDP model given transition files ( .tra ) and potentially
+ * multiple transition reward files ( .trew ).
  */
 
+
+/* struct thrown as exception when parsing errors occur */
 struct ParsingError {
 
     size_t line_num;
@@ -53,11 +59,14 @@ struct TripletList {
         triplets[ idx ] = prob;
     }
 
+    // query whether the underlying map contains a given (a,s) tuple
     bool contains( size_t a, size_t s ) {
         auto idx = std::make_pair( a, s );
         return triplets.find( idx ) != triplets.end() ;
     }
 
+    // check whether all the probability sums over successors ( for each action )
+    // are approximately equal to 1
     bool valid_probabilities() const {
         for ( const auto &[ a, prob ] : prob_sums ) {
             if ( !approx_equal( prob, 1.0 ) )
@@ -66,6 +75,10 @@ struct TripletList {
         return true;
     }
 
+    /* if used to represent rewards ( i.e the value in the triplet map is not a
+     * probability but arbitrary double ), which is used while parsing .trew
+     * files, this returns the highest/lowest double value, this is used when
+     * setting reward bounds when constructing the final MDP */
     std::pair< double, double> get_min_max_value() {
         if ( triplets.empty() )
             return { 0, 0 };
@@ -74,6 +87,8 @@ struct TripletList {
         return std::make_pair( min->second, max->second );
     }
 
+    /* build a 2D matrix out of the triplet map, used when constructing the
+     * final model */
     Matrix2D<double> build_matrix(){
         size_t max_a = 0, max_s = 0;
         std::vector< Eigen::Triplet< double > > eigen_triplets;
@@ -105,25 +120,24 @@ class PrismParser {
     // since the transition reward files contain SxAxS
     std::vector< TripletList > reward_info;
 
-    std::vector< std::pair< double, double > > reward_bounds;
-
+    /* names ( in the actual files ) of states and actions will be mapped to
+     * their respective indices ( first available number ) that will be used
+     * when indexing the triplet lists and the resulting MDPs */
     std::map< size_t, size_t> state_to_index;
     std::map< size_t, size_t> action_to_index;
 
+    // line which is currently parsed
+    size_t line_num;
+
     // line and iterators inside
     std::string line;
-
-    size_t line_num;
     std::string::const_iterator curr, end;
     
 
     bool eol() const;
-    char get_token( );
+    char get_token();
 
-    /* state names are mapped to first available indices
-     * maybe unnecessary, but the format does not guarantee that state indices
-     * start from 0 and this could later lead to allocating more memory then
-     * needed */
+    /* translate state/action name to its indix in aforementioned maps */
     size_t translate( const std::string &name, bool state );
 
     /* helper functions for parsing */
@@ -142,8 +156,10 @@ class PrismParser {
     bool remove_all( int (* callback)( int ) );
 
     
+    // match an S,A,S triplet
     std::tuple< size_t, size_t, size_t > match_triplet();
 
+    // match line of transition/reward file
     void match_reward();
     void match_transition();
 
@@ -154,6 +170,8 @@ class PrismParser {
 
 
 public:
+    // constructs a model using the transition and reward info 
+    // stored in this object
     MDP< double > build_model( size_t initial_state );
 
     // function used to parse and build a model from transition and reward

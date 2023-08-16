@@ -34,6 +34,9 @@ class BRTDPSolver{
     // supported as of now )
     std::vector< value_t > discount_params;
 
+
+    bool trace = false;
+
     /* helper functions for uniform sampling of actions/states
      * TODO: eliminate the need for uniform action, isntead utilize
      * uniform_index
@@ -119,12 +122,10 @@ class BRTDPSolver{
      */
     state_t bound_difference_state_selection( const std::map< state_t, double > &transitions ) {
 
-        auto [ min_value, _ ] = env.min_max_discounted_reward();
-
         value_t max_diff(0);
         std::vector< value_t > diff_values;
         for ( const auto &[ s, prob ] : transitions ) {
-            diff_values.push_back( env.get_state_bound( s ).bound_distance( min_value ) * prob );
+            diff_values.push_back( env.get_state_bound( s ).bound_distance() * prob );
             max_diff = std::max( max_diff, diff_values.back() );
         }
 
@@ -135,6 +136,7 @@ class BRTDPSolver{
 
         size_t chosen_index = uniform_index( maximising_indices );
 
+        // return the chosen_index-th key ( state ) from the map
         return std::next( transitions.begin(), chosen_index )->first;
     }
 
@@ -191,9 +193,11 @@ class BRTDPSolver{
 
             trajectory.push( { action, state } );
 
-            std::cout << iter 
-                      << " : Selected action " << action 
-                      << " successor state " << state << "\n";
+            // if debug output is turned on, output details of trajectory
+            if ( trace )
+                std::cout << iter 
+                          << " : Selected action " << action 
+                          << " successor state " << state << "\n";
 
             /* check termination ( whether gamma^iter * max_value is < precision )
              * then we can safely stop the trajectory ( cut off the tail )
@@ -229,8 +233,13 @@ class BRTDPSolver{
            result.sum_bounds( succ_bound );
         }
 
+        result.nondominated();
         result.multiply_bounds( discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
+
+        // get the lowest possible objective value and run the pareto operator
+        auto [ ref_point, _ ] = env.min_max_discounted_reward();
+        result.pareto( ref_point );
 
         env.set_bound( s, a, std::move( result ) );
     }
@@ -277,17 +286,17 @@ public:
 
         size_t episode = 0;
 
-        while ( env.get_state_bound( starting_state ).bound_distance( minimal_value ) >= precision ) {
+        while ( env.get_state_bound( starting_state ).bound_distance() >= precision ) {
             std::cout << "episode #" << episode << "\n";
             TrajectoryStack trajectory = sample_trajectory( maximal_value, precision );
             update_along_trajectory( trajectory, starting_state );
-            std::cout << env.get_state_bound( starting_state ).bound_distance( minimal_value ) << std::endl;
+            std::cout << env.get_state_bound( starting_state );
             episode++;
         }
 
         auto start_bound = env.get_state_bound( starting_state );
 
-        std::cout << "distance: " << start_bound.bound_distance( minimal_value ) << std::endl;
+        std::cout << "distance: " << start_bound.bound_distance( ) << std::endl;
         auto vertices = start_bound.lower().get_vertices();
 
         env.write_statistics();
@@ -295,13 +304,6 @@ public:
         std::sort( start_bound.upper().get_vertices().begin(), start_bound.upper().get_vertices().end() );
         start_bound.lower().write_to_file( "starting_lower.txt" );
         start_bound.upper().write_to_file( "starting_upper.txt" );
-
-        for ( size_t i = 0; i < vertices.size(); i++ ) {
-            for ( size_t it = i + 1; it < vertices.size(); it++ ){
-                assert( vertices[i] != vertices[it] );
-            }
-
-        }
 
         return start_bound;
     }

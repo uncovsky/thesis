@@ -148,7 +148,6 @@ void PrismParser::match_reward( ){
     auto idx = std::make_pair( a_id, succ_id );
 
     // weigh reward by probability 
-    //
     reward *= transition_info[ s_id ].triplets[ idx ];
 
 
@@ -164,14 +163,25 @@ void PrismParser::match_reward( ){
 }
 
 
+// loads ( and removes previous ) transition probability file 
 void PrismParser::parse_transition_file( const std::string &filename ){
     std::ifstream input_str( filename );
+
     if ( input_str.fail() ) {
         throw ParsingError( 0, "Transition file" + filename + " does not exist." );
     }
 
     line_num = 0;
     transition_info.clear();
+
+    // load first line
+    std::getline( input_str, line );
+
+    // remove initial commented lines ( reward headers, etc. )
+    while( ignore_line( line ) ) { std::getline( input_str, line ); }
+    
+    // skip first noncomment line ( contains the prism header information )
+    line_num++;
 
     while ( std::getline( input_str, line ) ) {
         line_num++;
@@ -206,6 +216,16 @@ void PrismParser::parse_reward_file( const std::string &filename ){
     }
 
     line_num = 0;
+
+    // load first line
+    std::getline( input_str, line );
+
+    // remove initial commented lines ( reward headers, etc. )
+    while( ignore_line( line ) ) { std::getline( input_str, line ); }
+    
+    // skip first noncomment line ( contains the prism header information )
+    line_num++;
+
     while ( std::getline( input_str, line ) ) {
         line_num++;
         if ( !ignore_line( line ) ) {
@@ -299,7 +319,6 @@ MDP< double > PrismParser::parse_model( const std::string &transition_file,
                                         size_t initial_state ) {
     //new model -> new rewards, transitions get reset in parse transition file
     reward_info.clear();
-
     try{
 
         std::cout << "Parsing " << transition_file << std::endl;
@@ -311,19 +330,23 @@ MDP< double > PrismParser::parse_model( const std::string &transition_file,
         return build_model( initial_state );
     }
 
+    // output error message and rethrow ( terminate )
     catch ( const ParsingError &e ) {
         std::cout << e.what() << std::endl;
         throw e;
     }
 }
 
+
 bool PrismParser::ignore_line( const std::string &line) {
+
     return line.empty() || ( line[0] == '#' ) ;
 }
 
+
 size_t PrismParser::string_to_ull( const std::string &input ) {
 
-    std::istringstream iss(input);
+    std::istringstream iss( input );
     size_t size;
     iss >> size;
 
