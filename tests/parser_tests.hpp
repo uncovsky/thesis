@@ -39,7 +39,22 @@ void model1test() {
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap3( &mdp2 );
     BRTDPSolver brtdp( std::move( env_wrap3 ) , { 0.9, 0.9 } );
     brtdp.solve( 0.2 );
+     
+    // test 2d reward file
+    auto mdp3 = parser.parse_model( "../tests/parser_files/model1.tra",
+                                            { "../tests/parser_files/model1_2d.trew"},
+                                            0 );
 
+    assert( mdp3.get_current_state() == 0 );
+    assert( mdp3.get_actions( 0 ) == std::vector< size_t > ( { 0, 1 } ) );
+    assert( mdp3.get_actions( 1 ) == std::vector< size_t > ( { 0, 1 } ) );
+    mdp3.step( 1 );
+    assert( mdp3.get_current_state() == 1 );
+
+    assert( mdp3.get_reward( 0, 0 ) == std::vector< double > ( { 1.0, 0.0 } ) );
+    assert( mdp3.get_reward( 1, 0 ) == std::vector< double > ( { 1.0, 0.0 } ) );
+    assert( mdp3.get_reward( 0, 1 ) == std::vector< double > ( { 0.0, 1.0 } ) );
+    assert( mdp3.get_reward( 1, 1 ) == std::vector< double > ( { 0.0, 1.0 } ) );
 }
 
 

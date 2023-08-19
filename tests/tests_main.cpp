@@ -4,7 +4,10 @@
 # include "polygon_tests.hpp"
 # include <iostream>
 
+
 int main() {
+
+
     std::cout << "Testing geometry utilities..\n";
     test_euclidean_distance();
     std::cout << "Testing pareto utilities..\n";

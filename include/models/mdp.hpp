@@ -134,15 +134,7 @@ public:
 
         reward_vec rew;
         for ( auto& reward_model : reward_models ) {
-            /* empty entries are implicit zeroes, this is necessary since
-             * during model parsing we don't assign zero rewards to transitions
-             * with missing reward, but rather leave them empty for now 
-             * TODO: maybe fix this in the parser
-             */
-            if ( ( action < reward_model.rows() ) && ( state < reward_model.cols() ) )
                 rew.push_back( reward_model.coeffRef( action, state ) );
-            else 
-                rew.push_back( 0 );
         }
 
         return rew;

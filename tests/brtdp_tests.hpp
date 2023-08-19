@@ -4,9 +4,39 @@
 # include "models/mdp.hpp"
 # include "solvers/brtdp.hpp"
 # include "utils/eigen_types.hpp"
+# include "parser.hpp"
 
 # include <cassert>
 # include <set>
+
+void test_brtdp( const std::string &transition_file,
+                 const std::vector< std::string > &reward_files,
+                 std::vector< double > discount_params,
+                 size_t starting_state=0,
+                 double precision=0.1 ) {
+
+    // construct parser object
+    PrismParser parser;
+
+    // parse the provided files
+    auto mdp = parser.parse_model( transition_file,
+                                   reward_files,
+                                   starting_state );
+
+    // construct a wrapper object around the mdp ( initializes the object
+    // bounds, and the solver uses it to interact with the model )
+    EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap( &mdp );
+
+    // construct the solver object using the wrapper and discount parameters
+    BRTDPSolver brtdp( std::move( env_wrap ), discount_params );
+
+    // solve up to given precision
+    auto start_bound = brtdp.solve( precision );
+
+    // output the lower/upper bounds of the starting state
+    std::cout << start_bound;
+}
+
 
 MDP< double > build_simple_mdp( ) {
 
@@ -166,4 +196,14 @@ void test_brtdp_on_simple_mdp() {
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap3( &mdp2 );
     BRTDPSolver brtdp3( std::move( env_wrap3 ) , { 0.85, 0.85 } );
     result = brtdp3.solve( 0.01 );
+
+    // short 1d test
+    test_brtdp( "../tests/parser_files/model1.tra",  // transition file
+                { 
+                  "../tests/parser_files/model1.trew",  // reward files
+                }, 
+                { 0.5 }, // discount params
+                0,  // id of starting state
+                0.01 // precision
+                  );
 }

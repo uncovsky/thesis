@@ -15,14 +15,28 @@
 /*
  * Parser for the prism explicit MDP format
  * See: https://www.prismmodelchecker.org/manual/Appendices/ExplicitModelFiles
+ *
+ * Additionally, multiple reward dimensions in one reward file are supported,
+ * so the format currently is:
+ *  
+ *  source_state action succ_state rew1 rew2 rew3 ... 
+ *  
+ * all lines don't have to have the same number of dimensions, but the largest
+ * number of reward dimensions on some line in the file is taken as the
+ * dimension of reward in the resulting model, and zeroes are added to all
+ * missing entries throughout the file.
+ *
+ * It is also possible to load multiple reward files as multiple dimensions of
+ * the resulting model reward.
  * 
  * Constructs an MDP model given transition files ( .tra ) and potentially
  * multiple transition reward files ( .trew ).
+ *
  */
 
 
 /* struct thrown as exception when parsing errors occur */
-struct ParsingError {
+struct ParseError {
 
     size_t line_num;
     std::string msg;
@@ -33,7 +47,7 @@ struct ParsingError {
         return ( line_msg + msg ).c_str();
     }
 
-    ParsingError( size_t line_num, const std::string &msg ) : line_num( line_num ),
+    ParseError( size_t line_num, const std::string &msg ) : line_num( line_num ),
                                                               msg( msg ) {}
 };
 
@@ -53,7 +67,7 @@ struct TripletList {
         auto idx = std::make_pair( a, s );
 
         if ( contains( a, s ) ) {
-            throw ParsingError( 0, "Duplicate transition" );
+            throw ParseError( 0, "Duplicate transition" );
         }
 
         triplets[ idx ] = prob;
@@ -103,7 +117,7 @@ struct TripletList {
 
         Matrix2D<double> result( max_a + 1, max_s + 1 );
         result.setFromTriplets( eigen_triplets.begin(), eigen_triplets.end() );
-
+        result.makeCompressed();
         return result;
     }
 };
@@ -127,7 +141,10 @@ class PrismParser {
     std::map< size_t, size_t> action_to_index;
 
     // line which is currently parsed
-    size_t line_num;
+    size_t line_num = 0;
+
+    // how many dimensions of reward are currently loaded 
+    size_t reward_dimension = 0;
 
     // line and iterators inside
     std::string line;
@@ -137,11 +154,12 @@ class PrismParser {
     bool eol() const;
     char get_token();
 
-    /* translate state/action name to its indix in aforementioned maps */
+    /* translate state/action name to its index in aforementioned maps */
     size_t translate( const std::string &name, bool state );
 
     /* helper functions for parsing */
     std::string load_unsigned();
+    std::string load_digits();
     double load_float();
 
     bool ignore_line( const std::string &line );
@@ -163,6 +181,9 @@ class PrismParser {
     void match_reward();
     void match_transition();
 
+    void update_expected_reward( size_t s_id, size_t a_id, size_t succ_id,
+                                 double reward, size_t idx );
+
     // only transition rewards supported
     void parse_transition_file( const std::string &filename );
     void parse_reward_file( const std::string &filename );
@@ -175,6 +196,7 @@ public:
     MDP< double > build_model( size_t initial_state );
 
     // function used to parse and build a model from transition and reward
+    // load files -> build_model
     MDP< double > parse_model( const std::string &transition_files,
                                const std::vector< std::string > &reward_files,
                                size_t initial_state );

@@ -1,39 +1,52 @@
 # include <iostream>
 # include "parser.hpp"
 
-/* first pass
- * find the number of states and for each state the number of associated
- * actions and successors
- *
- * validate the state names ( non-negative integers )
- *  - map them to indices
- * validate the probabilities ( floats between 0.0 - 1.0 )
- * validate that SxAxS triplets don't repeat
- * accumulate the necessary triplets ? 
- *
- * second pass
- *  build the model from triplets
+/* 
+* State & action indices are given as unsigned long
+* What is checked:
+*  SxAxS triplets don't repeat ( in both transition, reward files )
+*  for each SxA tuple the sum of probabilities 
+*      across all associated triplets is 1.0
+*      any one SxAxS probability is \in [0, 1.0]
+*  transition file / reward files exist
+*  
+* otherwise ParseError is thrown
+*
+* The rewards in .trew files ( given as SxAxS rewards ) are translated (
+* weighted ) to expected SxA rewards.
+* Missing rewards ( i.e SxA tuples that appear in the transition file but not
+* in the reward file ) are assigned zero when building the resulting model.
+*
+* rewards are assumed to be floating point numbers 
  */
 
 bool PrismParser::eol() const {
     return curr == end;
 }
 
+
 char PrismParser::get_token() {
     return eol() ? '\0' : *curr;
 }
 
 
-
 // accepts strings of digits of length >= 1 ( initial zeroes allowed )
 std::string PrismParser::load_unsigned( ) {
+
     std::string id;
     char token = get_token();
     require( std::isdigit );
     id.push_back( token );
 
-    token = get_token();
+    // load remaining digits ( possibly zero )
+    return id + load_digits();
+}
 
+// accepts [0-9]^*
+std::string PrismParser::load_digits( ){
+
+    std::string id;
+    char token = get_token();
     while ( check( std::isdigit ) ) {
         id.push_back( token );
         token = get_token();
@@ -59,12 +72,8 @@ double PrismParser::load_float(){
     }
     
     else {
-        // load remaining ( potentially zero digits )
-        char tok = get_token();
-        while( check( std::isdigit ) ) {
-            flt.push_back( tok );
-            tok = get_token();
-        }
+        // load remaining ( potentially zero ) digits
+        flt += load_digits();
     }
 
     return std::stod( flt );
@@ -89,9 +98,7 @@ size_t PrismParser::translate( const std::string& name, bool state ){
     return target[ id ];
 }
 
-// PRISM format (differs from storm by order s, succ, a rather than s, a, succ
-// and also some additional hints for the file ( # states, #transitions, which
-// we ignore anyway )
+// matches a SxAxS triplet from transition / reward file
 std::tuple< size_t, size_t, size_t > PrismParser::match_triplet(){
     remove_all( std::isspace );
 
@@ -104,7 +111,7 @@ std::tuple< size_t, size_t, size_t > PrismParser::match_triplet(){
     std::string succ = load_unsigned();
     remove_all( std::isspace );
 
-    // convert relevant info to indices
+    // convert relevant info to indices in maps / triplets
     size_t s_id = translate( s, true );
     size_t succ_id = translate( succ, true );
     size_t a_id = translate( a, false );
@@ -119,12 +126,13 @@ void PrismParser::match_transition( ){
     double p = load_float();
 
     if ( ( p <= 0 ) || ( p > 1 ) ) {
-        throw ParsingError( line_num, "Invalid transition probability\n" );
+        throw ParseError( line_num, "Invalid transition probability\n" );
     }
 
     /* 
-     * transition files may contain text labels, so this is incorrect, could handle
-     * in some other way later
+     * transition files may contain text labels of states, 
+     * so this is incorrect, could handle it in some other way later,
+     * but ignoring the rest works as well
     remove_all( std::isspace );
     require( '\0' );
     */
@@ -133,33 +141,64 @@ void PrismParser::match_transition( ){
 }
 
 void PrismParser::match_reward( ){
+    // match triplet and translate to indices in maps
     auto [ s_id, a_id, succ_id ] = match_triplet();
 
     if ( ( transition_info.find( s_id ) == transition_info.end() ) ||
          ( !transition_info[s_id].contains( a_id, succ_id ) ) ) {
-        throw ParsingError( line_num, "This reward transition is not present in the transition file.\n" );
+        throw ParseError( line_num, "This reward transition is not present in the transition file.\n" );
     }
 
-    double reward = load_float();
-    remove_all( std::isspace );
-    require( '\0' );
-    
-    // REDUCE TO SxA reward
+    // get all reward dimensions ( one file may have multiple )
+    std::vector< double > rewards;
+
+    // at least one dimension must be present
+    do {
+        rewards.push_back( load_float() );
+        remove_all( std::isspace );
+    }
+
+    while ( !check( '\0' ) );
+
+    // get number of currently allocated reward structures for this reward file
+    int avail_dimensions = reward_info.size() - reward_dimension;
+
+    // if this row needs more dimensions that is currently allocated, create them
+    if ( rewards.size() > avail_dimensions ) {
+        for ( int i = 0; i < rewards.size() - avail_dimensions; i++ ) {
+            reward_info.push_back(TripletList());
+        }
+    }
+
+    // update rewards
+    for ( size_t i = 0; i < rewards.size(); i++ ) {
+        update_expected_reward( s_id, a_id, succ_id, rewards[ i ], reward_dimension + i );
+    }
+
+
+}
+
+// reduce SxAxS reward to SxA
+// s_id, a_id, succ_id is the associated transition
+// reward the assoc reward, idx the index ( dimension )
+void PrismParser::update_expected_reward( size_t s_id, size_t a_id, size_t succ_id,
+                             double reward,
+                             size_t dim ){
+
     auto idx = std::make_pair( a_id, succ_id );
 
     // weigh reward by probability 
     reward *= transition_info[ s_id ].triplets[ idx ];
 
-
-    auto &reward_structure = reward_info.back();
+    // update contents of the structure
+    auto &reward_structure = reward_info[dim];
 
     if ( reward_structure.contains( a_id, s_id ) ){
         idx = std::make_pair( a_id, s_id );
-        reward_structure.triplets[idx] += reward;
+        reward_structure.triplets[ idx ] += reward;
     }
 
     else { reward_structure.add_triplet( a_id, s_id, reward ); }
-    auto [ _, max ] = reward_structure.get_min_max_value();
 }
 
 
@@ -168,11 +207,14 @@ void PrismParser::parse_transition_file( const std::string &filename ){
     std::ifstream input_str( filename );
 
     if ( input_str.fail() ) {
-        throw ParsingError( 0, "Transition file" + filename + " does not exist." );
+        throw ParseError( 0, "Transition file" + filename + " does not exist." );
     }
 
+    // reset all associated data
     line_num = 0;
+    reward_dimension = 0;
     transition_info.clear();
+    reward_info.clear();
 
     // load first line
     std::getline( input_str, line );
@@ -195,11 +237,9 @@ void PrismParser::parse_transition_file( const std::string &filename ){
         }
     }
 
-    // TODO: could maintain reverse mappings ( from indices to original state
-    // names in the file ) for better error messages
     for ( const auto &[ id, data ] : transition_info ){
         if ( !data.valid_probabilities() ){
-            throw ParsingError(0, "invalid transition probabilities for state mapped to index " + std::to_string( id ) + " \n");
+            throw ParseError(0, "invalid transition probabilities for state mapped to index " + std::to_string( id ) + " \n");
         }
     }
 }
@@ -207,12 +247,10 @@ void PrismParser::parse_transition_file( const std::string &filename ){
 
 void PrismParser::parse_reward_file( const std::string &filename ){
 
-
-    reward_info.push_back({});
     std::ifstream input_str( filename );
 
     if ( input_str.fail() ) {
-        throw ParsingError( 0, "Reward file" + filename + " does not exist." );
+        throw ParseError( 0, "Reward file" + filename + " does not exist." );
     }
 
     line_num = 0;
@@ -235,7 +273,8 @@ void PrismParser::parse_reward_file( const std::string &filename ){
         }
     }
 
-    // TODO: set misssing rewards as zero
+    // set dimension for next file
+    reward_dimension = reward_info.size();
 }
 
 
@@ -273,14 +312,14 @@ void PrismParser::require( int (* callback)( int ) ){
     std::string str;
     str.push_back( get_token() );
     if ( !check( callback ) )
-        throw ParsingError( line_num, "-> " + str + " <- " + "required token mismatch.\n" );
+        throw ParseError( line_num, "-> " + str + " <- " + "required token mismatch.\n" );
 }
 
 void PrismParser::require( char token ){
     std::string str;
     str.push_back( get_token() );
     if ( !check( token ) )
-        throw ParsingError( line_num , "-> " + str + " <- " + "required token mismatch.\n" );
+        throw ParseError( line_num , "-> " + str + " <- " + "required token mismatch.\n" );
 }
 
 // initial state given here is the number present in the file, not the index
@@ -293,8 +332,24 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
         transitions.emplace_back( transition_info[i].build_matrix() );
     }
 
+
     Matrix3D< double > rewards;
     std::pair< std::vector< double >, std::vector< double > > bounds;
+
+    // set missing rewards as zero
+    for ( const auto &[ s, triplet ] : transition_info ){
+
+        // for each SxA with nonzero probability
+        for ( const auto &[ a, _ ] : triplet.prob_sums ){
+
+            for ( size_t i = 0; i < reward_info.size(); i++ ){
+                if ( !reward_info[i].contains( a, s ) ) {
+                    reward_info[i].add_triplet( a, s, 0.0 );
+                }
+            }
+
+        }
+    }
     
     for ( size_t i = 0; i < reward_info.size(); i++ ) {
         rewards.emplace_back( reward_info[i].build_matrix() );
@@ -331,7 +386,7 @@ MDP< double > PrismParser::parse_model( const std::string &transition_file,
     }
 
     // output error message and rethrow ( terminate )
-    catch ( const ParsingError &e ) {
+    catch ( const ParseError &e ) {
         std::cout << e.what() << std::endl;
         throw e;
     }

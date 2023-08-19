@@ -66,8 +66,8 @@ void test_nondominated(  ){
         }
     }
 
+    assert ( is_dominated< int> ( { 26, 26 }, { 28, 28 } ) );
     remove_dominated_alt( test3 );
-    std::cout << is_dominated< int> ( { 26, 26 }, { 28, 28 } ) << std::endl;
 
     assert( test3 == std::vector< Point< int > >( {  { 29, 29 } } ) );
 

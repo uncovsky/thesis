@@ -40,53 +40,17 @@ bool check_convex_hull( const std::vector< std::vector< value_t > > &original_po
 
 void test_convex_hull() {
 
-    std::vector < std::vector< int > > line_vertices = { { -10 }, { -5 }, { 2 }, { 10 }, { 25 } };
-    std::vector < std::vector< int > > hull_vertices = { { -10 } , { 25 } };
+    std::vector < std::vector< double > > vertices1 = { { 0.0, 1.5 },
+                                                     { 1.5, 0.0 },
+                                                     { 0.5, 0.5 },
+                                                     { 0.0, 0.0 }};
 
+    // only these two vertices are optimal for some weight vector
+    std::vector < std::vector< double > > vertices1_res = { { 0.0, 1.5 },
+                                                     { 1.5, 0.0 }};
 
-    assert( check_convex_hull( line_vertices, hull_vertices, { LineSegment< int >( { -10 }, { -10 } ), LineSegment< int> ( { 25 }, { 25 } ) } ) );
-
-
-
-    std::vector < std::vector< int > > line2D = { { -10, -10 }, { 2, 2 }, { 5, 5 }, { 300, 300 } } ;
-
-    std::vector < std::vector< int > > line2Dhull = { { -10, -10 } , { 300, 300 } } ;
-
-    assert( check_convex_hull( line2D, 
-                               line2Dhull, 
-                               { LineSegment< int >( { -10, -10 }, { 300, 300 } ),
-                                 LineSegment< int > ( { 300, 300 }, {-10, -10} ) }
-                             ) );
-
-
-    std::vector< std::vector< double > > polygon1vert ( { { 5.0, 2.0 },
-                                                   { 5.0, 3.0 },
-                                                   { 6.5, 3.0 },
-                                                   { 5.0, 3.5 },
-                                                   { 5.5, 3.5 },
-                                                   { 3.0, 4.0 },
-                                                   { 4.5, 4.0 },
-                                                   { 6.0, 4.0 },
-                                                   { 5.25, 4.5 },
-                                                   { 4.5, 5.0 },
-                                                   { 6.5, 5.0 } } );
-
-    std::vector< std::vector< double > > polygon1hullvert ( { { 5.0, 2.0 },
-                                                           { 6.5, 3.0 },
-                                                           { 3.0, 4.0 },
-                                                           { 4.5, 5.0 },
-                                                           { 6.5, 5.0 } } );
-
-    std::vector< LineSegment< double > > polygon1hullfacets;
-
-    polygon1hullfacets.push_back( LineSegment< double >( { 6.5, 3.0 }, { 5.0, 2.0 } ) );
-    polygon1hullfacets.push_back( LineSegment< double >( { 5.0, 2.0 }, { 3.0, 4.0 } ) );
-    polygon1hullfacets.push_back( LineSegment< double >( { 3.0, 4.0 }, { 4.5, 5.0 } ) );
-    polygon1hullfacets.push_back( LineSegment< double >( { 4.5, 5.0 }, { 6.5, 5.0 } ) );
-    polygon1hullfacets.push_back( LineSegment< double >( { 6.5, 5.0 }, { 6.5, 3.0 } ) );
-
-
-    assert( check_convex_hull( polygon1vert, polygon1hullvert, polygon1hullfacets ) );
+    std::vector< LineSegment< double > > facets1 = { LineSegment< double >( {0.0, 1.5}, {1.5, 0.0} ) };
+    check_convex_hull( vertices1, vertices1_res, facets1 );
 }
 
 template < typename value_t > 
