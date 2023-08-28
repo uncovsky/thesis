@@ -15,7 +15,6 @@
         * to pass counts of states and actions, but i didn't use it ( hence in
         * the testing files some files simply have a header text at that place )
         *
- * each reward file describes one dimension of rewards ( one reward model ).
  * the underlying brtdp solver is called with the passed discount parameters 
  * and samples trajectories from the given starting state of the mdp
  * precision gives the stopping condition, i.e how close w.r.t to hausdorff
@@ -71,5 +70,13 @@ int main(){
                 0,  // id of starting state
                 0.1 // precision
                   );
+    test_brtdp( "../benchmarks/resource.tra",
+                {
+                    "../benchmarks/resource_gold.trew",
+                    "../benchmarks/resource_gems.trew",
+                },
+                { 0.9, 0.9 },
+                0,
+                0.0000001 );
     return 0;
 }

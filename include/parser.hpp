@@ -55,8 +55,6 @@ struct ParseError {
 struct TripletList { 
 
     // map ( S x ) A -> double to ensure probabilities sum to approx 1
-    // TODO: utilize this in parsing reward files and set missing SxA-rewards to
-    // zero
     std::map< size_t , double > prob_sums;
 
     std::map< std::pair< size_t, size_t > , double > triplets;
@@ -96,7 +94,9 @@ struct TripletList {
     std::pair< double, double> get_min_max_value() {
         if ( triplets.empty() )
             return { 0, 0 };
-        const auto [ min, max ] = std::minmax_element( triplets.begin(), triplets.end(), []( const auto &a, const auto &b ) { return a.second < b.second; } );
+        const auto [ min, max ] = std::minmax_element( triplets.begin(), 
+                                                       triplets.end(), 
+                                                       []( const auto &a, const auto &b ) { return a.second < b.second; } );
         // get associated values
         return std::make_pair( min->second, max->second );
     }

@@ -1,5 +1,5 @@
 #	Code repository for multi objective VI / BRTDP.
-## Dependencies: cmake 3.12, Eigen 3.3 (sparse matrices)
+## Dependencies: c++17, cmake 3.12, Eigen 3.3 (sparse matrices)
 
 ## Installing the eigen library on Debian/Ubuntu can be done by running:
 	 $ sudo apt-get install libeigen3-dev
@@ -11,7 +11,6 @@
 	 $ make
 
 ###### The final binary is located at build/mo-brtdp, tests at build/mo-brtdp-tests
-# Follow up on the last meeting
 
 ## Current features
 
