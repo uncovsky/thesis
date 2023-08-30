@@ -1,7 +1,8 @@
 #pragma once
 
-#include <random>
+#include <cassert>
 #include <limits>
+#include <random>
 
 #include "utils/random_utils.hpp"
 
@@ -63,7 +64,9 @@ public:
             if ( ( p < 0 ) || ( approx_zero( p ) ) ) { return state; }
         }
 
-        return 0;
+        // undefined
+        assert( false );
+        return state_t();
     }
 };
 

@@ -22,6 +22,7 @@ class BRTDPSolver{
     /* TODO: move these into a specialized exploration settings class, along
      * with precision etc. ? */
 
+    size_t MIN_TRAJECTORY = 10, MAX_TRAJECTORY=1000;
     enum class StateSelectionHeuristic { BRTDP, Uniform, Dynamics };
     enum class ActionSelectionHeuristic { Hypervolume, Pareto, Uniform };
 
@@ -41,7 +42,7 @@ class BRTDPSolver{
      * TODO: eliminate the need for uniform action, isntead utilize
      * uniform_index
      */
-    action_t uniform_index( const std::vector< size_t > &indices ) {
+    size_t uniform_index( const std::vector< size_t > &indices ) {
         return indices[ gen.rand_int( 0, indices.size() ) ];
     }
 
@@ -169,7 +170,7 @@ class BRTDPSolver{
     TrajectoryStack sample_trajectory( const std::vector< value_t > &max_value,
                                                           value_t precision ) {
         
-        std::stack< std::pair< state_t, action_t > > trajectory;
+        std::stack< std::pair< action_t, state_t > > trajectory;
 
         std::vector< value_t > discount_copy( max_value );
 
@@ -206,9 +207,11 @@ class BRTDPSolver{
             // discount_copy = discount_params^(iter+1) * max_value
             multiply( discount_copy, discount_params );
 
-            terminated = true;
 
-            // if all components are < precision, terminate
+            if ( iter > MAX_TRAJECTORY ) { break; }
+            // if all components are < precision, terminate, but iff reached
+            // min iterations
+            if ( iter > MIN_TRAJECTORY ) { terminated = true; }
             for ( value_t val : discount_copy )  {
                terminated &= val < precision; 
             }
@@ -273,7 +276,7 @@ public:
      */
     Bounds< value_t > solve( value_t precision ) {
 
-        size_t starting_state = std::get< 0 > ( env.reset( 0 ) );
+        state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
 
         env.set_discount_params( discount_params );
         

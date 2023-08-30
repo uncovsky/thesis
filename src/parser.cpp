@@ -365,7 +365,7 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
     return MDP< double >( std::move( transitions ),
                           std::move( rewards ), 
                           bounds, 
-                          initial_state );
+                          translate( std::to_string( initial_state ), true ) );
 }
 
 

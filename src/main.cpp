@@ -1,11 +1,13 @@
-#include "models/mdp.hpp"
-#include "solvers/brtdp.hpp"
-#include "geometry/polygon.hpp"
 #include "models/env_wrapper.hpp"
-#include <iostream>
+#include "models/mdp.hpp"
+#include "models/sea_treasure.hpp"
 #include "geometry/pareto.hpp"
-
+#include "geometry/polygon.hpp"
+#include "solvers/brtdp.hpp"
 #include "parser.hpp"
+
+#include <iostream>
+
 
 /* runs the algorithm on mdp given by a transition file and 1 or 2 reward files
  * the formats are described here: 
@@ -56,11 +58,36 @@ void test_brtdp( const std::string &transition_file,
 
 int main(){
 
+    DeepSeaTreasure dst;
+    dst.from_file( "../benchmarks/sea_treasure1.txt" );
+
+    TreasureState check;
+    check.position = Coordinates(0, 0);
+    check.treasure_collected = false;
+
+    for ( const auto &[ k, v ] : dst.get_transition( check, Direction::DOWN ) ){
+        std::cout << k << " " << v << "\n";
+    }
+
+    std::cout << dst.get_reward( check, Direction::DOWN )[0] << std::endl;
+
+    EnvironmentWrapper< TreasureState, Direction, std::vector<double>, double > env_wrap( &dst );
+
+    BRTDPSolver brtdp( std::move( env_wrap ), { 0.999999, 0.999999 } );
+
+    // solve up to given precision
+    auto start_bound = brtdp.solve( 0.1 );
+
+
+    // output the lower/upper bounds of the starting state
+    std::cout << start_bound;
+
     /* example: using the function to build the example problematic two state
      * mdp from the CON-MODP paper, each state has two deterministic actions
      * - stay in state / go to other state, 
      *   upon reaching state 0 get 1, 0 reward, upon reaching state 1 get reward 0, 1. */
 
+    /*
     test_brtdp( "../tests/parser_files/model1.tra",  // transition file
                 { 
                   "../tests/parser_files/model1.trew",  // reward files
@@ -78,5 +105,7 @@ int main(){
                 { 0.9, 0.9 },
                 0,
                 0.0000001 );
+    */
+
     return 0;
 }

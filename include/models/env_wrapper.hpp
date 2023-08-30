@@ -204,6 +204,7 @@ public:
 
         auto [ min, max ] = reward_range();
 
+
         // ( 1-\lambda_0, 1-\lambda_1, ... ), TODO: change this to something
         // more sensible, don't use c-style casts, but type traits?
         std::vector< value_t > discount_copy( discount_params );
@@ -211,9 +212,9 @@ public:
         add( value_t( 1 ), discount_copy );
          
         
-         divide( min, discount_copy );
-         divide( max, discount_copy );
-        
+        divide( min, discount_copy );
+        divide( max, discount_copy );
+
         return std::make_pair( min, max );
     }
 

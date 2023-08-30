@@ -80,7 +80,7 @@ public:
               gen(){}
 
 
-    std::vector< size_t > get_actions( size_t state ) const override {
+    std::vector< size_t > get_actions( const size_t &state ) const override {
 
         std::vector< size_t > available_actions;
         
@@ -109,8 +109,8 @@ public:
     }
 
 
-    std::map< size_t, double > get_transition( size_t state, 
-                                               size_t action ) const override {
+    std::map< size_t, double > get_transition( const size_t &state, 
+                                               const size_t &action ) const override {
 
         std::map< size_t, double > delta;
 
@@ -130,7 +130,7 @@ public:
 
 
 
-    reward_vec get_reward( size_t state, size_t action ) override{
+    reward_vec get_reward( const size_t &state, const size_t &action ) override{
 
         reward_vec rew;
         for ( auto& reward_model : reward_models ) {
@@ -147,7 +147,7 @@ public:
     }
 
 
-    bool is_terminal_state( size_t state ) const {
+    bool is_terminal_state( const size_t &state ) const {
         std::vector< size_t > avail_actions = get_actions( state );
         for ( size_t action : avail_actions ) {
 
@@ -173,7 +173,7 @@ public:
 
 
 
-    Observation step( size_t action ) override {
+    Observation step( const size_t &action ) override {
 
         reward_vec reward = get_reward( current_state, action );
 
