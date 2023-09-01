@@ -151,7 +151,8 @@ public:
 
         if ( get_dimension() > 2 ) {
             std::cout << "Higher dimension downward closures are currently unsupported." << std::endl;
-            assert( false );
+            // assert( false );
+            return;
         }
 
         /* 1d downward closure is irrelevant */

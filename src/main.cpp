@@ -56,31 +56,41 @@ void test_brtdp( const std::string &transition_file,
     std::cout << start_bound;
 }
 
-int main(){
-
+void treasure_check(){
     DeepSeaTreasure dst;
     dst.from_file( "../benchmarks/sea_treasure1.txt" );
 
     TreasureState check;
     check.position = Coordinates(0, 0);
-    check.treasure_collected = false;
+    check.treasure_collected = true;
 
     for ( const auto &[ k, v ] : dst.get_transition( check, Direction::DOWN ) ){
         std::cout << k << " " << v << "\n";
     }
 
+    
+
     std::cout << dst.get_reward( check, Direction::DOWN )[0] << std::endl;
 
     EnvironmentWrapper< TreasureState, Direction, std::vector<double>, double > env_wrap( &dst );
+
+    env_wrap.set_discount_params( { 0.9, 0.9 } );
+
+    env_wrap.init_bound( check, Direction::DOWN );
+    std::cout << env_wrap.get_state_action_bound( check, Direction::DOWN );
+
 
     BRTDPSolver brtdp( std::move( env_wrap ), { 0.999999, 0.999999 } );
 
     // solve up to given precision
     auto start_bound = brtdp.solve( 0.1 );
 
-
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;
+}
+
+int main(){
+
 
     /* example: using the function to build the example problematic two state
      * mdp from the CON-MODP paper, each state has two deterministic actions
@@ -97,6 +107,16 @@ int main(){
                 0,  // id of starting state
                 0.1 // precision
                   );
+
+    test_brtdp( "../benchmarks/linked_rings.tra",
+                { "../benchmarks/linked_rings.trew" },
+                { 0.9, 0.9 },
+                0,
+                1 );
+
+    treasure_check();
+    */
+
     test_brtdp( "../benchmarks/resource.tra",
                 {
                     "../benchmarks/resource_gold.trew",
@@ -105,7 +125,6 @@ int main(){
                 { 0.9, 0.9 },
                 0,
                 0.0000001 );
-    */
 
     return 0;
 }

@@ -60,6 +60,7 @@ std::map< TreasureState, double > DeepSeaTreasure::get_transition( const Treasur
     if ( s.treasure_collected ) {
         return { std::make_pair( s, 1.0 ) };
     }
+
     std::vector< Direction > actions = get_actions( s );
     std::vector< TreasureState > successors;
     for ( const auto &a : actions ) {
@@ -125,8 +126,8 @@ std::pair< DeepSeaTreasure::reward_t, DeepSeaTreasure::reward_t > DeepSeaTreasur
     std::vector< double > max_vec = { max_it->second, 0 };
 
     // TODO: change later
-    min_vec = { 0, 0 };
-    max_vec = { 10, 10 };
+    min_vec = { 0, -200 };
+    max_vec = { 1000, 1000 };
 
     return std::make_pair( min_vec, max_vec );
 }
