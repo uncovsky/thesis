@@ -1,6 +1,7 @@
 #include "models/env_wrapper.hpp"
 #include "models/mdp.hpp"
 #include "models/sea_treasure.hpp"
+#include "models/resource_gathering.hpp"
 #include "geometry/pareto.hpp"
 #include "geometry/polygon.hpp"
 #include "solvers/brtdp.hpp"
@@ -89,6 +90,30 @@ void treasure_check(){
     std::cout << start_bound;
 }
 
+
+void resource_check(){
+
+    ResourceGathering env( 5, 5, // height & width
+                           Coordinates( 4, 2 ), // starting pos
+                           { Coordinates( 0, 2 ) }, // gold
+                           { Coordinates( 1, 4 ) }, // gems 
+                           {  } // attackers
+                           ); 
+    
+    ResourceState s( Coordinates( 4, 1 ), { true, true } );
+    auto rew = env.get_reward( s, Direction::DOWN );
+    std::cout << rew[0] <<  " " << rew[1];
+    EnvironmentWrapper< ResourceState, Direction, std::vector<double>, double > env_wrap( &env );
+
+    BRTDPSolver brtdp( std::move( env_wrap ), { 0.9, 0.9 } );
+
+    // solve up to given precision
+    auto start_bound = brtdp.solve( 0.1 );
+
+    // output the lower/upper bounds of the starting state
+    std::cout << start_bound;
+}
+
 int main(){
 
 
@@ -115,8 +140,10 @@ int main(){
                 1 );
 
     treasure_check();
+
     */
 
+    resource_check();
     test_brtdp( "../benchmarks/resource.tra",
                 {
                     "../benchmarks/resource_gold.trew",
@@ -125,6 +152,9 @@ int main(){
                 { 0.9, 0.9 },
                 0,
                 0.0000001 );
+
+
+
 
     return 0;
 }

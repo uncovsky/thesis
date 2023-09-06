@@ -22,7 +22,7 @@ class BRTDPSolver{
     /* TODO: move these into a specialized exploration settings class, along
      * with precision etc. ? */
 
-    size_t MIN_TRAJECTORY = 10, MAX_TRAJECTORY=1000000;
+    size_t MIN_TRAJECTORY = 10, MAX_TRAJECTORY=100;
     enum class StateSelectionHeuristic { BRTDP, Uniform, Dynamics };
     enum class ActionSelectionHeuristic { Hypervolume, Pareto, Uniform };
 
@@ -37,7 +37,7 @@ class BRTDPSolver{
 
 
     bool trace = false;
-    size_t max_iter = 1000;
+    size_t max_iter = 10000;
 
     /* helper functions for uniform sampling of actions/states
      * TODO: eliminate the need for uniform action, isntead utilize

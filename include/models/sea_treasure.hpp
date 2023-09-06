@@ -156,7 +156,8 @@ public:
     // constructors
     DeepSeaTreasure();
     DeepSeaTreasure( size_t height, size_t width, Coordinates initial_state,
-                                  const std::map< Coordinates, double > &treasures,
-                                  const std::set< Coordinates > &inacessible_squares  );
+                     const std::map< Coordinates, double > &treasures,
+                     const std::set< Coordinates > &inacessible_squares  );
+
     DeepSeaTreasure( const DeepSeaTreasure &other );
 };

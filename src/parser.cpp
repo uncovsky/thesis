@@ -216,15 +216,6 @@ void PrismParser::parse_transition_file( const std::string &filename ){
     transition_info.clear();
     reward_info.clear();
 
-    // load first line
-    std::getline( input_str, line );
-
-    // remove initial commented lines ( reward headers, etc. )
-    while( ignore_line( line ) ) { std::getline( input_str, line ); }
-    
-    // skip first noncomment line ( contains the prism header information )
-    line_num++;
-
     while ( std::getline( input_str, line ) ) {
         line_num++;
         // set iterators
@@ -254,15 +245,6 @@ void PrismParser::parse_reward_file( const std::string &filename ){
     }
 
     line_num = 0;
-
-    // load first line
-    std::getline( input_str, line );
-
-    // remove initial commented lines ( reward headers, etc. )
-    while( ignore_line( line ) ) { std::getline( input_str, line ); }
-    
-    // skip first noncomment line ( contains the prism header information )
-    line_num++;
 
     while ( std::getline( input_str, line ) ) {
         line_num++;

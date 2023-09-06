@@ -28,7 +28,7 @@ std::vector< Point< value_t > > quickhull( const std::vector< Point< value_t > >
                                                    std::less< std::vector< value_t > > () );
 
 
-    Point<value_t> min_x = *min_it, max_x = *max_it;
+    Point< value_t > min_x = *min_it, max_x = *max_it;
     if ( min_x == max_x )
         return { min_x };
 
