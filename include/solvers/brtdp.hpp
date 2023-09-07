@@ -1,7 +1,9 @@
 # pragma once
-#include "models/env_wrapper.hpp"
-#include "utils/prng.hpp"
+#include <algorithm>
 #include <stack> 
+#include "models/env_wrapper.hpp"
+#include "utils/eigen_types.hpp"
+#include "utils/prng.hpp"
 
 
 template < typename state_t, typename action_t, typename value_t >
@@ -29,7 +31,7 @@ class BRTDPSolver{
 
     // selected heuristics to guide the search
     StateSelectionHeuristic state_heuristic = StateSelectionHeuristic::BRTDP;
-    ActionSelectionHeuristic action_heuristic = ActionSelectionHeuristic::Uniform;
+    ActionSelectionHeuristic action_heuristic = ActionSelectionHeuristic::Pareto;
 
     // vector of gammas for each objective ( maximum of two objectives
     // supported as of now )
@@ -38,6 +40,9 @@ class BRTDPSolver{
 
     bool trace = false;
     size_t max_iter = 10000;
+
+    // trajectory cutoff ( stop when difference of bounds on successor is < )
+    double delta_distance = 1e-12;
 
     /* helper functions for uniform sampling of actions/states
      * TODO: eliminate the need for uniform action, isntead utilize
@@ -55,60 +60,53 @@ class BRTDPSolver{
         return avail_actions[ gen.rand_int( 0, avail_actions.size() ) ];
     }
 
+    action_t uniform_action( const std::set< action_t > &avail_actions ) {
+        auto idx =  gen.rand_int( 0, avail_actions.size() );
+
+        return *std::next( avail_actions.begin(), idx );
+    }
+
     
     /* pareto set evaluation heuristic from pareto q-learning:
      * 1) look at upper bounds of available actions
      * 2) select action uniformly from all actions that have >= 1 nondominated
      * vector in their upper bound across avail_actions 
-     * TODO: fix segfault
      */
     action_t pareto_action( state_t s, const std::vector< action_t > &avail_actions ) {
 
-        // TODO: probably a global typedef of Point in eigen_types 
-        // would be helpful to change across all files, 
-        using VertexSet = typename std::vector< std::vector< value_t > >; 
-        std::vector< std::unique_ptr< VertexSet > > bounds;
+        using VertexSet = typename std::vector< Point< value_t > >; 
+
+        VertexSet nondominated;
+        std::vector< VertexSet > bounds;
+
+        std::set< action_t > pareto_actions;
 
         // copy vertices of upper bounds
-        for ( action_t a : avail_actions ) {
+        for ( const action_t &a : avail_actions ) {
             VertexSet vertices;
 
             // get vertices of respective upper bound and copy them into a set
             vertices = env.get_state_action_bound( s, a ).upper().get_vertices();
-            bounds.push_back( std::make_unique< VertexSet > ( std::move( vertices ) ) );
+            nondominated.insert( nondominated.end(), vertices.begin(), vertices.end() );
+            bounds.emplace_back( std::move( vertices ) );
+
         }
 
-        // filter out dominated vertices
-        for ( size_t bound = 0; bound < bounds.size(); bound++ ) {
+        remove_dominated_alt( nondominated );
 
-            auto& current_set = ( *bounds[bound] );
-
-            for ( auto it = current_set.begin(); it != current_set.end(); ) {
-
-                bool dominated = false;
-
-                // check if element is dominated in other, and remove vectors it
-                // dominates from other
-                for ( size_t other = bound + 1; other < bounds.size(); other++ ){
-                    if ( pareto_check_remove( *it, *bounds[other] ) )
-                        dominated = true;
+        for ( const auto &point : nondominated ) {
+            size_t i = 0;
+            for ( const action_t &action : avail_actions ) {
+                /* if Q value of this action contains a nondominated point, add
+                 * it to candidates for action selection
+                 */
+                if ( ( pareto_actions.find( action ) == pareto_actions.end() ) &&
+                       ( std::find( bounds[i].begin(), bounds[i].end(), point ) != bounds[i].end() ) ) {
+                    pareto_actions.insert( action );
                 }
 
-                // if current vector was dominated by vector of other action, remove
-                if ( dominated ) { it = current_set.erase( it ); }
-                else { it++; }
+                i++;
             }
-
-        }
-
-        std::vector< action_t > pareto_actions;
-
-        // add those actions that have a nondominated vector result
-        for ( size_t i = 0; i < avail_actions.size(); i++ ) {
-            if ( !( *bounds[ i ] ).empty() ) {
-                pareto_actions.push_back( avail_actions[i] );
-            }
-
         }
 
         // choose uniformly from these actions
@@ -208,8 +206,12 @@ class BRTDPSolver{
             // discount_copy = discount_params^(iter+1) * max_value
             multiply( discount_copy, discount_params );
 
+            auto successor_bound = env.get_state_bound( state );
 
-            if ( iter > MAX_TRAJECTORY ) { break; }
+            if ( ( iter > MAX_TRAJECTORY ) || 
+                 ( successor_bound.bound_distance() ) < delta_distance ) { 
+                    break; 
+            }
             // if all components are < precision, terminate, but iff reached
             // min iterations
             if ( iter > MIN_TRAJECTORY ) { terminated = true; }

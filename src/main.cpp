@@ -108,7 +108,7 @@ void resource_check(){
     BRTDPSolver brtdp( std::move( env_wrap ), { 0.9, 0.9 } );
 
     // solve up to given precision
-    auto start_bound = brtdp.solve( 0.1 );
+    auto start_bound = brtdp.solve( 0.001 );
 
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;

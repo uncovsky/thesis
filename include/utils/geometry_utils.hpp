@@ -1,8 +1,9 @@
-#pragma once
+# pragma once
 
-#include <cmath>
-#include <vector> 
-#include <set>
+# include <cmath>
+# include <vector> 
+# include <set>
+# include "utils/eigen_types.hpp"
 
 
 /*
@@ -12,8 +13,8 @@
 
 
 template < typename value_t >
-value_t dot_product( const std::vector< value_t > &lhs , 
-                     const std::vector< value_t > &rhs) {
+value_t dot_product( const Point< value_t > &lhs , 
+                     const Point< value_t > &rhs) {
     assert( lhs.size() == rhs.size() );
     value_t result(0);
     for ( size_t i = 0; i < rhs.size(); i++ ){
@@ -27,7 +28,7 @@ value_t dot_product( const std::vector< value_t > &lhs ,
 
 template < typename value_t > 
 void multiply( value_t scalar, 
-               std::vector< value_t > &vec ) {
+               Point< value_t > &vec ) {
     for ( value_t &elem : vec ){
         elem *= scalar;
     }
@@ -35,15 +36,15 @@ void multiply( value_t scalar,
 
 template < typename value_t > 
 void add( value_t scalar, 
-          std::vector< value_t > &vec ) {
+          Point< value_t > &vec ) {
     for ( value_t &elem : vec ){
         elem += scalar;
     }
 }
 
 template < typename value_t > 
-void multiply( std::vector< value_t > &lhs , 
-               const std::vector< value_t > &rhs ) {
+void multiply( Point< value_t > &lhs , 
+               const Point< value_t > &rhs ) {
 
     assert( lhs.size() == rhs.size() );
     for ( size_t i = 0; i < rhs.size(); i++ ){
@@ -53,8 +54,8 @@ void multiply( std::vector< value_t > &lhs ,
 
 /* component-wise division */
 template < typename value_t > 
-void divide( std::vector< value_t > &lhs , 
-             const std::vector< value_t > &rhs ) {
+void divide( Point< value_t > &lhs , 
+             const Point< value_t > &rhs ) {
     assert( lhs.size() == rhs.size() );
     for ( size_t i = 0; i < rhs.size(); i++ ){
         lhs[i] /= rhs[i];
@@ -62,8 +63,8 @@ void divide( std::vector< value_t > &lhs ,
 }
 
 template < typename value_t > 
-void add( std::vector< value_t > &lhs, 
-                            const std::vector< value_t > &rhs ) {
+void add( Point< value_t > &lhs, 
+                            const Point< value_t > &rhs ) {
     assert ( lhs.size() == rhs.size() );
     for ( size_t i = 0; i < lhs.size(); i++ ) {
         lhs[i] += rhs[i];
@@ -71,8 +72,8 @@ void add( std::vector< value_t > &lhs,
 }
 
 template < typename value_t > 
-void subtract( std::vector< value_t > &lhs, 
-                                 const std::vector< value_t > &rhs ) {
+void subtract( Point< value_t > &lhs, 
+                                 const Point< value_t > &rhs ) {
     assert ( lhs.size() == rhs.size() );
     for ( size_t i = 0; i < lhs.size(); i++ ) {
         lhs[i] -= rhs[i];
@@ -81,21 +82,53 @@ void subtract( std::vector< value_t > &lhs,
 }
 
 template < typename value_t > 
-std::vector< value_t > norm( const std::vector< value_t > &lhs ) {
+Point< value_t > norm( const Point< value_t > &lhs ) {
 
     return multiply( 1/dot_product( lhs, lhs ), lhs );
 }
 
 
 template < typename value_t >
-value_t euclidean_distance( const std::vector< value_t > &lhs , 
-                     const std::vector< value_t > &rhs) {
+value_t euclidean_distance( const Point< value_t > &lhs , 
+                     const Point< value_t > &rhs) {
     assert( lhs.size() == rhs.size() );
 
-    std::vector< value_t > diff( lhs );
+    Point< value_t > diff( lhs );
     // get diff
     subtract( diff, rhs );
 
     return std::sqrt( dot_product( diff, diff ) );
 }
 
+
+
+// get distance of x from line segment [beg, end]
+template < typename value_t > 
+value_t line_segment_distance( const Point< value_t > &beg,
+                               const Point< value_t > &end,
+                               const Point< value_t > &x ) {
+
+    Point< value_t > line( end ), delta( x );
+    
+    // line is vector of the line segment, delta is vector from x to beg
+    subtract( line, beg );
+    subtract( delta, beg );
+
+    // get projection on line segment
+    value_t coeff = std::clamp( dot_product( delta, line ) , value_t( 0 ), value_t( 1 ) );
+
+    // get projection, ( line * coeff + x1 )
+    multiply( coeff, line );
+    add( line, beg );
+
+    // calculate distance of this projection from x
+    return euclidean_distance( line, x );
+}
+
+template < typename value_t > 
+double ccw( const Point< value_t > &x1,
+            const Point< value_t > &x2,
+            const Point< value_t > &p ){
+            value_t res = ( x2[0] - x1[0] ) * ( p[1] - x1[1] ) - ( x2[1] - x1[1] ) * ( p[0] - x1[0] );
+            return static_cast< double > ( res );
+    }

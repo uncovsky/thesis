@@ -1,8 +1,8 @@
 # pragma once
 
-#include <vector>
-#include <set>
 #include <algorithm>
+#include <set>
+#include <vector>
 #include "utils/eigen_types.hpp"
 #include "utils/geometry_utils.hpp"
 
@@ -122,26 +122,10 @@ void nondominated_union( std::vector< Point< value_t > > &lhs,
 }
 
 
-// returns true if element value is dominated by one in given set, or removes
-// all vertices dominated by it from input_set
-// used in pareto action heuristic
-// input condition : input_set does not contain any dominated vectors (i.e
-// ND(input_set) = input_set )
-template < typename value_t >
-bool pareto_check_remove( const Point< value_t > &value,
-                          std::vector< Point< value_t > > &input_set ) {
-
-    std::vector< Point< value_t > > res;
-    bool dominated = false;
-    for ( auto it = input_set.begin(); it != input_set.end(); it++ ){
-
-        // if value is dominated, then from input condition can't dominate any
-        // member of input set, safe to return
-        if ( is_dominated( value, *it ) ) { dominated = true; break; }
-        if ( !is_dominated( *it, value ) ){ res.push_back( *it ); }
+template < typename value_t > 
+bool dominates_set( const Point< value_t > &point,
+                    const std::vector< Point< value_t > > &candidates ) {
     
-    }
-    
-    input_set = res;
-    return dominated;
+    return std::all_of( candidates.begin(), candidates.end(),
+                        [&] ( auto candidate_pt ) { return is_dominated( candidate_pt, point ); });
 }
