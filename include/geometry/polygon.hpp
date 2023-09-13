@@ -20,12 +20,8 @@
  * We make a few assumptions about the data:
  *  - facets are only initialized after a call to convex_hull ( which also sets
  *  vertices to ones of the hull )
- *  - vertices contain only ( pareto ) nondominated points, represented as
- *  vectors, all sharing the same dimensions
+ *  - convex hull operation sorts the vertices lexicographically
  *
- *  neither of these is limiting since we only need the facets to compute the
- *  distance of two pareto curves ( so convex hull is called ), and all the
- *  curves we make will be constructed from nondominated elems after updates
  */
 
 template < typename value_t >
@@ -48,14 +44,7 @@ public:
              const std::vector< LineSegment< value_t > > &f ) : vertices( v ),
                                                                 facets ( f ) {  }
 
-    bool operator==( Polygon& rhs ) {
-
-        std::sort( facets.begin(), facets.end() );
-        std::sort( vertices.begin(), vertices.end() );
-
-        std::sort( rhs.get_facets().begin(), rhs.get_facets().end() );
-        std::sort( rhs.get_vertices().begin(), rhs.get_vertices().end() );
-
+    bool operator==( Polygon& rhs ) const {
         bool equal_f = facets == rhs.get_facets();
         bool equal_v = vertices == rhs.get_vertices();
 
@@ -82,8 +71,7 @@ public:
     size_t get_dimension() const {
         if ( vertices.empty() ) 
             return 0;
-        Point< value_t > vertex = *( vertices.begin() );
-        return vertex.size();
+        return vertices[0].size();
     }
 
     /* multiplication & addition, both element-wise and single elements */
@@ -139,12 +127,13 @@ public:
         vertices = std::move( new_vertices );
     }
 
-    // downward closure for 1/2 dimensions
-    // preconditions:
-    //  array vertices contains only nondominated elements
-    //  vertices form a convex polygon ( so convex_hull has been called
-    //  beforehand )
-    // reference point contains minimal values for each objective
+    /* downward closure for 1/2 dimensions
+     * preconditions:
+     *  array vertices contains only nondominated elements
+     *  vertices form a convex polygon ( so convex_hull has been called
+     *  beforehand )
+     * reference point contains minimal values for each objective
+     */
     void downward_closure( const Point< value_t > &reference_point ) {
 
         assert( get_dimension() == reference_point.size() );
@@ -168,16 +157,13 @@ public:
         Point< value_t > max_y_point = extreme_points[1].second;
 
 
-        // just add two line segments from extremal points of the curve for now
-        // also need to delete the facet between these two points, but this
-        // shouldn't matter with distance calculations and is more costly then
-        // just leaving it there
+        // add two line segments from extremal points of the curve 
         Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
         Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
-
         facets.emplace_back( facet_x, max_x_point );
         facets.emplace_back( facet_y, max_y_point );
     }
+
 
 
     // computes convex hull of vertices, removing all but the vertices forming
@@ -217,9 +203,54 @@ public:
         facets = std::move( new_facets );
     }
 
+    // more efficient + automatically remove dominated solutions
+    // eps determines the granularity of the hull
+    void upper_right_hull( double eps=1e-4 ){
+        if ( vertices.empty() )
+            return;
+        if ( get_dimension() > 2 ) {
+            std::cout << "Higher dimension convex hulls are currently unsupported." << std::endl;
+            assert( false );
+        }
+
+        // keep only max element
+        if ( get_dimension() == 1 ) {
+            vertices = { *std::max_element( vertices.begin(), vertices.end() ) };
+            facets = { LineSegment< value_t >( vertices[0], vertices[0] ) };
+            return;
+        }
+
+        std::sort( vertices.begin(), vertices.end() );
+
+        std::vector< Point< value_t > > hull = { vertices.back() } ;
+
+        for ( auto it = vertices.rbegin() + 1; it != vertices.rend(); it++ ){
+            Point< value_t > pt = *it;
+            // need increasing y
+            if ( pt[1] <= hull.back()[1] ) { continue; }
+            else if ( hull.size() < 2 ) { hull.push_back( pt ); }
+            else { 
+                size_t i = hull.size() - 1;
+                while ( ( hull.size() >= 2 ) && ( ccw( hull[i - 1], hull[i], pt ) <= eps ) ){
+                    hull.pop_back();
+                    i--;
+                }
+                hull.push_back( pt );
+            }
+        }
+
+        facets.clear();
+
+        for ( size_t i = 0; i < hull.size() - 1; i++ ) {
+            facets.emplace_back( hull[i], hull[i + 1] );
+        }
+
+        vertices = std::move( hull );
+
+    }
 
     void pareto( const Point< value_t >& ref_point ){
-        convex_hull();
+        upper_right_hull();
         downward_closure( ref_point );
     }
 
@@ -245,9 +276,10 @@ public:
         return min_distance;
     }
 
-    // computes hausdorff distance of two polygons, assuming *this is contained
-    // in upper_polygon entirely and facets of *this are initialized properly
-    // ( convex hull call preceded this )
+    /* computes hausdorff distance of two polygons, assuming *this is contained
+     * in upper_polygon entirely and facets of *this are initialized properly
+     * ( convex hull call preceded this )
+     */
     value_t hausdorff_distance( const Polygon& upper_polygon ) {
         value_t max_distance = 0;
 
@@ -261,13 +293,13 @@ public:
     std::string to_string( ) const {
         std::stringstream str;
 
-        str << "VERTICES:\n";
         for ( const auto &vert : vertices ) {
             for ( value_t val : vert ) {
-                str << val << ";";
+                str << val << " ";
             }
             str << "\n";
         }
+        /*
         str << "\nFACETS:\n";
         for ( const auto &facet : facets ) {
             auto [x, y] = facet.get_points();
@@ -281,6 +313,7 @@ public:
                 str << a << " ";
             str << "\n";
             }
+        */
 
         return str.str();
     }

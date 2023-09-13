@@ -134,16 +134,16 @@ class EnvironmentWrapper{
 
     std::vector< value_t > discount_params;
 
-    std::set < state_t > discovered_states;
-    std::map < std::tuple< state_t, action_t >, bounds_ptr > state_action_bounds;
+    std::map< state_t, size_t > update_count;
+    std::map< std::tuple< state_t, action_t >, bounds_ptr > state_action_bounds;
 
 public:
 
     EnvironmentWrapper() : env( nullptr ), 
-                           discovered_states(), 
+                           update_count(), 
                            state_action_bounds() {}
     EnvironmentWrapper( Environment< state_t, action_t, reward_t > *env ) : env( env ), 
-                                                                            discovered_states(), 
+                                                                            update_count(), 
                                                                             state_action_bounds() {}
 
     using Observation = typename Environment< state_t, action_t, reward_t > :: Observation;
@@ -179,7 +179,7 @@ public:
 
     void clear_records(){
         state_action_bounds.clear();
-        discovered_states.clear();
+        update_count.clear();
     }
 
     Observation reset( unsigned seed=0, bool reset_records=true ) {
@@ -272,8 +272,8 @@ public:
      * MDP has
      */
     void discover( state_t s ) {
-        if ( discovered_states.find( s ) == discovered_states.end() ) {
-            discovered_states.insert( s );
+        if ( update_count.find( s ) == update_count.end() ) {
+            update_count[ s ] = 0;
             for ( const action_t & avail_action : get_actions( s ) ) {
                 init_bound( s, avail_action );
             }
@@ -312,7 +312,7 @@ public:
         }
 
         // remove dominated elements from result
-        result.nondominated();
+        // result.nondominated();
 
         // set facets and eliminate convex dominated points
         auto [ ref_point, _ ] = min_max_discounted_reward();
@@ -337,6 +337,7 @@ public:
 
     void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
+       update_count[ s ]++;
        state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( bound );
     }
 
@@ -345,15 +346,25 @@ public:
     }
 
 
-    void write_statistics(){
-        std::cout << "States discovered: " << discovered_states.size() << "\n";
+    void write_statistics( bool write_all ){
+        std::cout << "States discovered: " << update_count.size() << "\n";
         std::cout << "Total records, state action values: " << state_action_bounds.size() << "\n";
+        std::cout << "Total brtdp updates ran by state:\n";
 
+        size_t total = 0;
+        for ( const auto &[k, v] : update_count ) {
+            std::cout << "State: " << k << " updates ( state x action ): " <<  v << std::endl;
+            total += v;
+        }
 
-        std::ofstream str( "all_bounds.txt" );
-        for ( const auto &[ k, v ] : state_action_bounds ){
-            str << "State: " << std::get< 0 > ( k ) << " action: " << std::get< 1 > ( k ) << ".\n";
-            str << *v << "\n\n\n";
+        std::cout << " Total " << total << " state action updates.\n";
+
+        if ( write_all ) {
+            std::ofstream str( "all_bounds.txt" );
+            for ( const auto &[ k, v ] : state_action_bounds ){
+                str << "State: " << std::get< 0 > ( k ) << " action: " << std::get< 1 > ( k ) << ".\n";
+                str << *v << "\n\n\n";
+            }
         }
     }
 

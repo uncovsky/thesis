@@ -1,3 +1,4 @@
+# pragma once
 # include "geometry/geometry.hpp"
 # include "utils/geometry_utils.hpp"
 

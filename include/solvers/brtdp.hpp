@@ -5,6 +5,37 @@
 #include "utils/eigen_types.hpp"
 #include "utils/prng.hpp"
 
+    
+enum class StateSelectionHeuristic { BRTDP, 
+                                     Uniform, 
+                                     Dynamics };
+
+enum class ActionSelectionHeuristic { Hypervolume, 
+                                      Pareto, 
+                                      Uniform };
+
+
+struct ExplorationSettings {
+    
+/* global settings */
+    size_t max_iterations;
+
+    // bound distance on starting state to terminate solver
+    double precision;
+
+/* sampling settings */
+
+    // min/max dephts of trajectory
+    size_t min_trajectory, max_trajectory;
+
+    // bound distance that is sufficient to end the trajectory earlier
+    double bound_cutoff;
+
+    // state / action heuristics
+    StateSelectionHeuristic state_heuristic;
+    ActionSelectionHeuristic action_heuristic; 
+};
+
 
 template < typename state_t, typename action_t, typename value_t >
 class BRTDPSolver{
@@ -25,9 +56,6 @@ class BRTDPSolver{
      * with precision etc. ? */
 
     size_t MIN_TRAJECTORY = 10, MAX_TRAJECTORY=100;
-    enum class StateSelectionHeuristic { BRTDP, Uniform, Dynamics };
-    enum class ActionSelectionHeuristic { Hypervolume, Pareto, Uniform };
-
 
     // selected heuristics to guide the search
     StateSelectionHeuristic state_heuristic = StateSelectionHeuristic::BRTDP;
@@ -74,25 +102,23 @@ class BRTDPSolver{
      */
     action_t pareto_action( state_t s, const std::vector< action_t > &avail_actions ) {
 
-        using VertexSet = typename std::vector< Point< value_t > >; 
+        using vertex_vec = typename std::vector< Point< value_t > >; 
 
-        VertexSet nondominated;
-        std::vector< VertexSet > bounds;
+        std::vector< vertex_vec > bounds;
 
         std::set< action_t > pareto_actions;
 
         // copy vertices of upper bounds
         for ( const action_t &a : avail_actions ) {
-            VertexSet vertices;
+            vertex_vec vertices;
 
             // get vertices of respective upper bound and copy them into a set
             vertices = env.get_state_action_bound( s, a ).upper().get_vertices();
-            nondominated.insert( nondominated.end(), vertices.begin(), vertices.end() );
             bounds.emplace_back( std::move( vertices ) );
 
         }
 
-        remove_dominated_alt( nondominated );
+        vertex_vec nondominated = env.get_state_bound( s ).upper().get_vertices();
 
         for ( const auto &point : nondominated ) {
             size_t i = 0;
@@ -239,7 +265,7 @@ class BRTDPSolver{
            result.sum_bounds( succ_bound );
         }
 
-        result.nondominated();
+        // result.nondominated();
         result.multiply_bounds( discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
 
@@ -277,6 +303,11 @@ public:
      * outputs the bound ( pareto objects ) into text files, sampled
      * trajectories during execution and number of discovered states at the end
      */
+
+    void load_environment( Environment< state_t, action_t, std::vector< value_t > > &new_env ) {
+        env = EnvironmentHandle( &new_env );
+    }
+
     Bounds< value_t > solve( value_t precision ) {
 
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
@@ -307,7 +338,7 @@ public:
         std::cout << "distance: " << start_bound.bound_distance( ) << std::endl;
         auto vertices = start_bound.lower().get_vertices();
 
-        env.write_statistics();
+        env.write_statistics( true );
         std::sort( start_bound.lower().get_vertices().begin(), start_bound.lower().get_vertices().end() );
         std::sort( start_bound.upper().get_vertices().begin(), start_bound.upper().get_vertices().end() );
         start_bound.lower().write_to_file( "starting_lower.txt" );

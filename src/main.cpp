@@ -5,6 +5,7 @@
 #include "geometry/pareto.hpp"
 #include "geometry/polygon.hpp"
 #include "solvers/brtdp.hpp"
+#include "solvers/chvi.hpp"
 #include "parser.hpp"
 
 #include <iostream>
@@ -58,35 +59,18 @@ void test_brtdp( const std::string &transition_file,
 }
 
 void treasure_check(){
-    DeepSeaTreasure dst;
+    DeepSeaTreasure dst, dst_convex;
     dst.from_file( "../benchmarks/sea_treasure1.txt" );
-
-    TreasureState check;
-    check.position = Coordinates(0, 0);
-    check.treasure_collected = true;
-
-    for ( const auto &[ k, v ] : dst.get_transition( check, Direction::DOWN ) ){
-        std::cout << k << " " << v << "\n";
-    }
-
-    
-
-    std::cout << dst.get_reward( check, Direction::DOWN )[0] << std::endl;
+    dst_convex.from_file( "../benchmarks/sea_treasure_convex.txt" );
 
     EnvironmentWrapper< TreasureState, Direction, std::vector<double>, double > env_wrap( &dst );
 
-    env_wrap.set_discount_params( { 0.9, 0.9 } );
-
-    env_wrap.init_bound( check, Direction::DOWN );
-    std::cout << env_wrap.get_state_action_bound( check, Direction::DOWN );
-
-
-    BRTDPSolver brtdp( std::move( env_wrap ), { 0.999999, 0.999999 } );
-
-    // solve up to given precision
+    BRTDPSolver brtdp( std::move( env_wrap ), { 0.99, 0.99 } );
     auto start_bound = brtdp.solve( 0.1 );
+    std::cout << start_bound;
 
-    // output the lower/upper bounds of the starting state
+    brtdp.load_environment( dst_convex );
+    start_bound = brtdp.solve( 0.1 );
     std::cout << start_bound;
 }
 
@@ -100,18 +84,20 @@ void resource_check(){
                            {  } // attackers
                            ); 
     
-    ResourceState s( Coordinates( 4, 1 ), { true, true } );
-    auto rew = env.get_reward( s, Direction::DOWN );
-    std::cout << rew[0] <<  " " << rew[1];
     EnvironmentWrapper< ResourceState, Direction, std::vector<double>, double > env_wrap( &env );
+    EnvironmentWrapper< ResourceState, Direction, std::vector<double>, double> env_wrap2( &env );
 
     BRTDPSolver brtdp( std::move( env_wrap ), { 0.9, 0.9 } );
+    CHVIExactSolver chvi( std::move( env_wrap2 ), { 0.9, 0.9 } );
 
     // solve up to given precision
-    auto start_bound = brtdp.solve( 0.001 );
+    auto start_bound = brtdp.solve( 0.1 );
+    auto start_bound2 = chvi.solve( 0.1 );
 
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;
+    std::cout << start_bound2;
+
 }
 
 int main(){
@@ -139,11 +125,17 @@ int main(){
                 0,
                 1 );
 
-    treasure_check();
 
     */
+    /*
+    test_brtdp( "../benchmarks/test_mdp.tra",
+                {
+                    "../benchmarks/test_mdp.trew"
+                },
+                { 0.95, 0.95 },
+                0,
+                0.0000001 );
 
-    resource_check();
     test_brtdp( "../benchmarks/resource.tra",
                 {
                     "../benchmarks/resource_gold.trew",
@@ -153,6 +145,10 @@ int main(){
                 0,
                 0.0000001 );
 
+
+    */
+    treasure_check();
+    resource_check();
 
 
 

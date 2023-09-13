@@ -126,8 +126,8 @@ std::pair< DeepSeaTreasure::reward_t, DeepSeaTreasure::reward_t > DeepSeaTreasur
     std::vector< double > max_vec = { max_it->second, 0 };
 
     // TODO: change later
-    min_vec = { 0, -200 };
-    max_vec = { 0.0001, 0.0001 };
+    min_vec = { 0, -1 };
+    max_vec = { 150, 0 };
 
     return std::make_pair( min_vec, max_vec );
 }
