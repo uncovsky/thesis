@@ -108,7 +108,6 @@ int main(){
      * - stay in state / go to other state, 
      *   upon reaching state 0 get 1, 0 reward, upon reaching state 1 get reward 0, 1. */
 
-    /*
     test_brtdp( "../tests/parser_files/model1.tra",  // transition file
                 { 
                   "../tests/parser_files/model1.trew",  // reward files
@@ -119,6 +118,7 @@ int main(){
                 0.1 // precision
                   );
 
+    /*
     test_brtdp( "../benchmarks/linked_rings.tra",
                 { "../benchmarks/linked_rings.trew" },
                 { 0.9, 0.9 },
@@ -147,8 +147,8 @@ int main(){
 
 
     treasure_check();
-    */
     resource_check();
+    */
 
 
 
