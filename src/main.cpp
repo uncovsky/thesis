@@ -88,15 +88,16 @@ void resource_check(){
     EnvironmentWrapper< ResourceState, Direction, std::vector<double>, double> env_wrap2( &env );
 
     BRTDPSolver brtdp( std::move( env_wrap ), { 0.9, 0.9 } );
-    CHVIExactSolver chvi( std::move( env_wrap2 ), { 0.9, 0.9 } );
+
+    // CHVIExactSolver chvi( std::move( env_wrap2 ), { 0.9, 0.9 } );
+    // auto start_bound2 = chvi.solve( 0.1 );
+    // std::cout << start_bound2;
 
     // solve up to given precision
     auto start_bound = brtdp.solve( 0.1 );
-    auto start_bound2 = chvi.solve( 0.1 );
 
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;
-    std::cout << start_bound2;
 
 }
 
@@ -147,9 +148,9 @@ int main(){
 
 
     treasure_check();
-    resource_check();
     */
 
+    resource_check();
 
 
     return 0;
