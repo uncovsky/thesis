@@ -341,8 +341,8 @@ public:
         env.write_statistics( true );
         std::sort( start_bound.lower().get_vertices().begin(), start_bound.lower().get_vertices().end() );
         std::sort( start_bound.upper().get_vertices().begin(), start_bound.upper().get_vertices().end() );
-        start_bound.lower().write_to_file( "starting_lower.txt" );
-        start_bound.upper().write_to_file( "starting_upper.txt" );
+        start_bound.lower().write_to_file( "../out/starting_lower.txt" );
+        start_bound.upper().write_to_file( "../out/starting_upper.txt" );
 
         return start_bound;
     }

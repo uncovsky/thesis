@@ -146,8 +146,8 @@ int main(){
                 0.0000001 );
 
 
-    */
     treasure_check();
+    */
     resource_check();
 
 

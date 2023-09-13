@@ -1,8 +1,8 @@
 #	Code repository for multi objective VI / BRTDP.
-## Dependencies: c++17, cmake 3.12, Eigen 3.3 (sparse matrices)
+## Dependencies: c++17, cmake 3.12, Eigen 3.3 (sparse matrices), gnuplot
 
 ## Installing the eigen library on Debian/Ubuntu can be done by running:
-	 $ sudo apt-get install libeigen3-dev
+	 $ sudo apt-get install libeigen3-dev gnuplot
 
 ## Afterwards simply run:
 	 $ mkdir build
@@ -22,8 +22,7 @@
 * upper bounds on objective for each state/action pair - pareto curves. Accepts
 discount parameters / precision on hausdorff distance of starting bound. 
 
-* Heuristics for BRTDP for successor sampling ( difference of bounds as
-in the original paper ). 
+* Heuristics for BRTDP for action & successor sampling
 
 * Parser for explicit PRISM files with some additional features that can be used to load
 explicit models and use them to build the MDP for solving.
@@ -60,8 +59,8 @@ follows.
 1. Create a transition file and ( possibly multiple ) transition reward files
 	 that describe your MDP in the build directory.
 2. Use the test_brtdp() function provided in the main source file.
-3. The function outputs the resulting bounds ( pareto objects ) to stdout and
-	 to two text files starting_upper and starting_lower respectively.
+3. Resulting pareto curves are output as text files in the /out directory
+4. Run gnuplot -p plotscript.p for a simple visualization
 
 ## Changes made to the algorithm
 Since stochastic policies are considered as well, I've changed the algorithm to
