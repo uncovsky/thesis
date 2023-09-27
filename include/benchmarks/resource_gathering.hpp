@@ -5,12 +5,9 @@
 # include <iostream>
 # include <set>
 # include <sstream>
+# include "benchmarks/core.hpp"
 # include "models/environment.hpp"
-# include "models/sea_treasure.hpp"
 # include "utils/prng.hpp"
-
-
-/* TODO: add 3 dimensional reward (-1 after attack) */
 
 
 struct ResourceState {
@@ -44,9 +41,9 @@ class ResourceGathering : public Environment< ResourceState, Direction, std::vec
 
     double prob_of_attack = 0.0;
 
-    using Obervation = Environment< Coordinates, Direction, std::vector< double > >::Observation;
+    using state_t = ResourceState;
+    using action_t = Direction;
     using reward_t = std::vector< double >;
-
 
     size_t height, width;
 
@@ -59,10 +56,6 @@ class ResourceGathering : public Environment< ResourceState, Direction, std::vec
 
 
 public:
-    // helper functions
-    Coordinates dir_to_vec( Direction dir ) const;
-    bool collides( const Coordinates& pos, Direction dir ) const;
-
     // environment interface
     ResourceState get_current_state() const override;
     std::map< ResourceState, double > get_transition( const ResourceState &pos, const Direction &dir ) const override;

@@ -61,20 +61,17 @@ class CHVIExactSolver{
 public:
     CHVIExactSolver( EnvironmentHandle &&_env, 
                     const std::vector< value_t > discount_params ) :  
-                           env( std::move( _env ) ),
-                           reachable_states(  ),
-                           discount_params( discount_params ) {  }
+                                                                     env( std::move( _env ) )
+                                                                   , reachable_states(  )
+                                                                   , discount_params( discount_params ) {  }
 
     Bounds< value_t > solve( value_t precision ) {
 
         size_t sweeps = 0;
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
-
         env.set_discount_params( discount_params );
         set_reachable_states();
         
-
-
         while ( env.get_state_bound( starting_state ).bound_distance() >= precision ){
             std::cout << "Sweep number: " << sweeps << ".\n";
             for ( const state_t &s : reachable_states ) {

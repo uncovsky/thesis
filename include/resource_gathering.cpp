@@ -1,35 +1,5 @@
-# include "models/resource_gathering.hpp"
-
-bool ResourceGathering::collides( const Coordinates& pos, Direction dir ) const {
-
-    Coordinates next = pos + dir_to_vec( dir );
-
-    if ( ( 0 > next.x ) || ( next.x >= width ) || 
-         ( 0 > next.y ) || ( next.y >= height ) ) {
-        return true;
-    }
-
-    return false;
-}
-
-Coordinates ResourceGathering::dir_to_vec( Direction dir ) const {
-    int dx = 0, dy = 0;
-    switch ( dir ) {
-        case Direction::UP:
-            dy = -1;
-            break;
-        case Direction::DOWN:
-            dy = 1;
-            break;
-        case Direction::LEFT:
-            dx = -1;
-            break;
-        case Direction::RIGHT:
-            dx = 1;
-            break;
-    }
-    return Coordinates( dx, dy );
-}
+# include "benchmarks/resource_gathering.hpp"
+# include "benchmarks/core.hpp"
 
 ResourceState ResourceGathering::get_current_state() const {
     return current_state;
@@ -97,7 +67,7 @@ std::vector< Direction > ResourceGathering::get_actions( const ResourceState &po
     std::vector< Direction > result;
     for ( auto dir : { Direction::UP, Direction::DOWN, Direction::LEFT, Direction::RIGHT } ) {
 
-        if ( !collides( pos.position, dir ) ){
+        if ( !collides( pos.position, dir, height, width ) ){
             result.push_back( dir );
         }
     }

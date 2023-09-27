@@ -1,7 +1,5 @@
 # pragma once
-# include "geometry/geometry.hpp"
 # include "utils/geometry_utils.hpp"
-
 
 /*
  * Implementation of the Quickhull algorithm for two dimensions
@@ -15,7 +13,6 @@
 
 
 // get convex hull of a set of points (only works for 2D so far)
-
 template< typename value_t >
 void quickhull_rec(        std::vector< Point< value_t > >& result , 
                      const std::vector< Point< value_t > >& points , 

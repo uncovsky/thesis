@@ -3,15 +3,11 @@
 # include <algorithm> 
 # include <iostream>
 # include <fstream>
-# include <set>
 # include <sstream>
 # include <string>
 
-# include "geometry/geometry.hpp"
-# include "geometry/pareto.hpp"
 # include "geometry/quickhull.hpp"
 # include "utils/geometry_utils.hpp"
-
 
 /*
  * 2D polygon class to track the pareto curve, the curve is saved as its 
@@ -23,28 +19,71 @@
  *  - convex hull operation sorts the vertices lexicographically
  *
  */
-
 template < typename value_t >
 class Polygon {
 
-    std::vector< Point< value_t > > vertices;
-    std::vector< LineSegment< value_t > > facets;
+    // class storing facet information, currently only 1d ( line segments ) support
+    struct Facet {
 
+        std::vector< Point< value_t > > points;
+
+        value_t point_distance( const Point< value_t >& y ) const {
+        
+            if ( points.size() != 2 ) {
+                std::cout << "error: only two dimensional polygons are currently supported.\n";
+                throw std::runtime_error("invalid facet operation.");
+            }
+
+            std::vector< value_t > line( points[1] ), delta( y );
+            
+            // line is vector of the line segment, delta is vector from x1 to y
+            subtract( line, points[0] );
+            subtract( delta, points[0] );
+
+            // get projection on line segment
+            value_t coeff = std::clamp( dot_product( delta, line ) 
+                                      , value_t( 0 )
+                                      , value_t( 1 ) );
+
+            // get projection, ( line * coeff + x1 )
+            multiply( coeff, line );
+            add( line, points[0] );
+
+            // calculate distance of this projection (saved in line) from y
+            return euclidean_distance( line, y );
+
+        }
+
+        Facet() : points() {}
+        Facet( const std::vector< Point< value_t > > &_points ) : points( _points ) {
+            // keep points in lexicographic order
+            std::sort( points.begin(), points.end() );
+        }
+            
+
+        bool operator==( const Facet& other ) const{
+            return points == other.points;
+        }
+    };
+
+    std::vector< Point< value_t > > vertices;
+    std::vector< Facet > facets;
 
 public:
 
     Polygon( ) : vertices( ), facets( ) {  }
 
-    Polygon( const std::vector< Point< value_t > > &v ) : vertices( v ),
-                                            facets ( ) {  }
+    Polygon( const std::vector< Point< value_t > > &v ) : vertices( v )
+                                                        , facets ( ) {  }
 
-    Polygon( std::vector< Point< value_t > > &&v ) :  vertices( std::move( v ) ), 
-                                           facets ( ) {  }
+    Polygon( std::vector< Point< value_t > > &&v ) : vertices( std::move( v ) )
+                                                   , facets ( ) {  }
+
     Polygon( const std::vector< Point< value_t > > &v,
-             const std::vector< LineSegment< value_t > > &f ) : vertices( v ),
-                                                                facets ( f ) {  }
+             const std::vector< Facet > &f ) : vertices( v )
+                                             , facets ( f ) {  }
 
-    bool operator==( Polygon& rhs ) const {
+    bool operator==( const Polygon& rhs ) const {
         bool equal_f = facets == rhs.get_facets();
         bool equal_v = vertices == rhs.get_vertices();
 
@@ -56,11 +95,11 @@ public:
         return vertices;
     }
 
-    const std::vector< LineSegment< value_t > >& get_facets( ) const {
+    const std::vector< Facet >& get_facets( ) const {
         return facets;
     }
 
-    std::vector< LineSegment< value_t > >& get_facets( ) {
+    std::vector< Facet >& get_facets( ) {
         return facets;
     }
 
@@ -160,8 +199,8 @@ public:
         // add two line segments from extremal points of the curve 
         Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
         Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
-        facets.emplace_back( facet_x, max_x_point );
-        facets.emplace_back( facet_y, max_y_point );
+        facets.push_back( Facet({ facet_x, max_x_point }) );
+        facets.push_back( Facet({ facet_y, max_y_point }) );
     }
 
 
@@ -180,22 +219,22 @@ public:
         // handle one dimensional case, since only nondominated points, only
         // one vertex is possible
         if ( get_dimension() == 1 ) {
-            facets = { LineSegment< value_t >( vertices[0], vertices[0] ) };
+            facets = { Facet( { vertices[0], vertices[0] } ) };
             return;
         }
         
 
         std::vector< Point< value_t > > result = quickhull( vertices );
-        std::vector< LineSegment< value_t > > new_facets;
+        std::vector< Facet > new_facets;
 
         size_t vertex_count = result.size();
 
         for ( size_t i = 0; i < vertex_count - 1; i++ ) {
-            new_facets.emplace_back( result[i], result[i + 1] );
+            new_facets.push_back( Facet({ result[i], result[i + 1] }) );
         }
 
         if ( vertex_count > 1 )
-            new_facets.emplace_back( result.back(), result[0] );
+            new_facets.push_back( Facet({ result.back(), result[0] }) );
 
         std::vector< Point< value_t > > new_vertices( result.begin(), result.end() );
 
@@ -216,7 +255,7 @@ public:
         // keep only max element
         if ( get_dimension() == 1 ) {
             vertices = { *std::max_element( vertices.begin(), vertices.end() ) };
-            facets = { LineSegment< value_t >( vertices[0], vertices[0] ) };
+            facets = { Facet( { vertices[0], vertices[0] } ) };
             return;
         }
 
@@ -242,7 +281,7 @@ public:
         facets.clear();
 
         for ( size_t i = 0; i < hull.size() - 1; i++ ) {
-            facets.emplace_back( hull[i], hull[i + 1] );
+            facets.push_back( Facet({ hull[i], hull[i + 1] }) );
         }
 
         vertices = std::move( hull );
@@ -266,7 +305,7 @@ public:
             return point[0] - vertices[0][0];
         }
 
-        LineSegment< value_t > first_facet = facets[0];
+        Facet first_facet = facets[0];
         value_t min_distance = first_facet.point_distance( point );
 
         for ( const auto &ls : facets  ) {
@@ -299,22 +338,6 @@ public:
             }
             str << "\n";
         }
-        /*
-        str << "\nFACETS:\n";
-        for ( const auto &facet : facets ) {
-            auto [x, y] = facet.get_points();
-
-            for ( auto a : x )
-                str << a << " ";
-
-            str << " ; ";
-
-            for ( auto a : y )
-                str << a << " ";
-            str << "\n";
-            }
-        */
-
         return str.str();
     }
 

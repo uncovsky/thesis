@@ -112,16 +112,6 @@ void remove_dominated_alt( std::vector< Point< value_t > > &input ){
     input = std::move( nondom_points );
 }
 
-// lhs := ND( union( lhs, rhs ) )
-// for update rule in pql
-template < typename value_t > 
-void nondominated_union( std::vector< Point< value_t > > &lhs,
-                         const std::vector< Point< value_t > > &rhs ) {
-    std::copy(rhs.begin(), rhs.end(), std::back_inserter(lhs));
-    remove_dominated_alt( lhs );
-}
-
-
 template < typename value_t > 
 bool dominates_set( const Point< value_t > &point,
                     const std::vector< Point< value_t > > &candidates ) {

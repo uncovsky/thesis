@@ -51,12 +51,6 @@ class BRTDPSolver{
     // prng for selecting actions/successors
     PRNG gen;
 
-
-    /* TODO: move these into a specialized exploration settings class, along
-     * with precision etc. ? */
-
-    size_t MIN_TRAJECTORY = 10, MAX_TRAJECTORY=100;
-
     // selected heuristics to guide the search
     StateSelectionHeuristic state_heuristic = StateSelectionHeuristic::BRTDP;
     ActionSelectionHeuristic action_heuristic = ActionSelectionHeuristic::Pareto;
@@ -67,7 +61,7 @@ class BRTDPSolver{
 
 
     bool trace = false;
-    size_t max_iter = 10000;
+    size_t max_iter = 2000;
 
     // trajectory cutoff ( stop when difference of bounds on successor is < )
     double delta_distance = 1e-12;
@@ -234,15 +228,15 @@ class BRTDPSolver{
 
             auto successor_bound = env.get_state_bound( state );
 
-            if ( ( iter > MAX_TRAJECTORY ) || 
-                 ( successor_bound.bound_distance() ) < delta_distance ) { 
-                    break; 
-            }
             // if all components are < precision, terminate, but iff reached
             // min iterations
-            if ( iter > MIN_TRAJECTORY ) { terminated = true; }
+            bool terminated = true;
             for ( value_t val : discount_copy )  {
                terminated &= val < precision; 
+            }
+
+            if ( ( terminated ) || ( successor_bound.bound_distance() < delta_distance ) ) { 
+                    break; 
             }
             
             iter++;

@@ -5,6 +5,7 @@
 # include <iostream>
 # include <set>
 # include <sstream>
+# include "benchmarks/core.hpp"
 # include "models/environment.hpp"
 # include "utils/prng.hpp"
 
@@ -15,54 +16,6 @@
  * https://ala2022.github.io/papers/ALA2022_paper_16.pdf
  */
 
-struct Coordinates{
-
-    int x, y;
-    Coordinates() : x( 0 ), y( 0 ) {}
-    Coordinates( int x, int y ) : x( x ), y( y ) {}
-    Coordinates( std::pair< int, int > c ) : x( c.first ), y( c.second ) {}
-
-    Coordinates& operator+=( const Coordinates& rhs ) {
-        x += rhs.x;
-        y += rhs.y;
-
-        return *this;
-    }
-
-    Coordinates operator+( const Coordinates& rhs ) const {
-        Coordinates copy = *this;
-        copy += rhs;
-        return copy;
-    }
-
-    Coordinates operator-=( const Coordinates& rhs ) {
-        x -= rhs.x;
-        y -= rhs.y;
-
-        return *this;
-    }
-
-    Coordinates operator-( const Coordinates& rhs ) const {
-        Coordinates copy = *this;
-        copy -= rhs;
-        return copy;
-    }
-
-    bool operator==( const Coordinates &rhs ) const {
-        return x == rhs.x && y == rhs.y;
-    }
-
-
-    bool operator<( const Coordinates& rhs ) const {
-        return ( x < rhs.x ) || ( ( x == rhs.x ) && ( y < rhs.y ) );
-    }
-
-    friend std::ostream &operator<<( std::ostream& os, const Coordinates &c ) {
-        os << "(" << c.x << ", " << c.y << ")";
-        return os;
-    }
-
-};
 
 struct TreasureState {
 
@@ -84,10 +37,6 @@ struct TreasureState {
         return os;
     }
 
-};
-
-enum class Direction {
-    UP, DOWN, LEFT, RIGHT
 };
 
 inline std::ostream &operator<<( std::ostream& os, const Direction &dir ) {
@@ -128,8 +77,6 @@ class DeepSeaTreasure : public Environment< TreasureState, Direction, std::vecto
 
     // helper functions
     void initialize_state( Coordinates pos );
-    Coordinates dir_to_vec( Direction dir ) const;
-    bool collides( const Coordinates& pos, Direction dir ) const;
     bool terminated( const TreasureState& s );
 
 public:

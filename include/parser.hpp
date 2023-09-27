@@ -10,7 +10,7 @@
 # include <vector>
 # include "models/mdp.hpp"
 # include "utils/eigen_types.hpp"
-# include "utils/random_utils.hpp"
+# include "utils/prng.hpp"
 
 /*
  * Parser for the prism explicit MDP format
@@ -65,7 +65,7 @@ struct TripletList {
         auto idx = std::make_pair( a, s );
 
         if ( contains( a, s ) ) {
-            throw ParseError( 0, "Duplicate transition" );
+            throw ParseError( 1, "Duplicate transition" );
         }
 
         triplets[ idx ] = prob;
@@ -134,7 +134,11 @@ class PrismParser {
     // since the transition reward files contain SxAxS
     std::vector< TripletList > reward_info;
 
-    /* names ( in the actual files ) of states and actions will be mapped to
+
+    bool translate_indices = false;
+
+    /* if translate indices is set, 
+     * names ( in the actual files ) of states and actions will be mapped to
      * their respective indices ( first available number ) that will be used
      * when indexing the triplet lists and the resulting MDPs */
     std::map< size_t, size_t> state_to_index;

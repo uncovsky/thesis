@@ -8,30 +8,35 @@
 #include "geometry/pareto.hpp"
 #include "models/environment.hpp"
 #include "utils/eigen_types.hpp"
-#include "utils/random_utils.hpp"
+#include "utils/prng.hpp"
 
 
 /* tracks lower/upper bounds on the objective value */
 template < typename value_t > 
 class Bounds{
 
+    size_t times_updated = 0;
     Polygon< value_t > lower_bound;
     Polygon< value_t > upper_bound;
 
 public:
 
+
     Bounds() : lower_bound(), upper_bound(){}
 
     Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
              const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
-                                                                    upper_bound( upper_pts ) {}
+                                                                       upper_bound( upper_pts ),
+                                                                       times_updated( 1 ){}
     Bounds ( const Polygon< value_t > &lower, 
              const Polygon< value_t > &upper ) : lower_bound( lower ),
-                                                 upper_bound( upper ) {}
+                                                 upper_bound( upper ),
+                                                 times_updated( 1 ){}
 
     Bounds ( Polygon< value_t > &&lower, 
              Polygon< value_t > &&upper ) : lower_bound( std::move( lower ) ),
-                                            upper_bound( std::move( upper ) ) {}
+                                            upper_bound( std::move( upper ) ),
+                                            times_updated( 1 ){}
 
     Polygon< value_t > &lower() {
         return lower_bound; 
@@ -104,12 +109,17 @@ public:
     void pareto( const std::vector< value_t > &ref_point ) {
         lower_bound.pareto( ref_point );
         upper_bound.pareto( ref_point );
+        times_updated++;
     }
 
     // input conditions -> pareto operator has been ran on *this ( pareto call
     // preceded, omitting it here for performance reasons )
     value_t bound_distance(){
         return lower_bound.hausdorff_distance( upper_bound );
+    }
+
+    size_t update_count() const {
+        return times_updated;
     }
 
     friend std::ostream &operator<<( std::ostream& os, const Bounds< value_t > &b ) {

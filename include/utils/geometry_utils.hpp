@@ -132,3 +132,26 @@ double ccw( const Point< value_t > &x1,
             value_t res = ( x2[0] - x1[0] ) * ( p[1] - x1[1] ) - ( x2[1] - x1[1] ) * ( p[0] - x1[0] );
             return static_cast< double > ( res );
     }
+
+// returns a vector of extreme points along respective dimensions in input
+// all points in input must be of the same dimensions
+template < typename value_t > 
+std::vector< std::pair< Point< value_t >, Point< value_t > > >  
+get_extreme_points( const std::vector< Point< value_t > > &vertices ) {
+
+    if ( vertices.empty() )
+        return {};
+
+    std::vector< std::pair< Point< value_t >, Point< value_t > > > res;
+
+    for ( size_t dimension = 0; dimension < vertices.begin()->size(); ++dimension ) {
+         auto [ min_it, max_it ] = std::minmax_element( 
+                                   vertices.begin(), vertices.end(),
+                                   [dimension]( const Point< value_t >& lhs, const Point< value_t >& rhs) 
+                                            { return lhs[dimension] < rhs[dimension]; } );
+        res.emplace_back( *min_it, *max_it );
+    }
+
+    return res;
+}
+

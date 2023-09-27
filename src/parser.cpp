@@ -112,9 +112,16 @@ std::tuple< size_t, size_t, size_t > PrismParser::match_triplet(){
     remove_all( std::isspace );
 
     // convert relevant info to indices in maps / triplets
-    size_t s_id = translate( s, true );
-    size_t succ_id = translate( succ, true );
-    size_t a_id = translate( a, false );
+    // commented out for now
+    size_t s_id = string_to_ull( s );
+    size_t a_id = string_to_ull( a );
+    size_t succ_id = string_to_ull( succ );
+
+    if ( translate_indices ) {
+        s_id = translate( s, true );
+        succ_id = translate( succ, true );
+        a_id = translate( a, false );
+    }
 
     return { s_id, a_id, succ_id };
 }
@@ -207,17 +214,16 @@ void PrismParser::parse_transition_file( const std::string &filename ){
     std::ifstream input_str( filename );
 
     if ( input_str.fail() ) {
-        throw ParseError( 0, "Transition file" + filename + " does not exist." );
+        throw ParseError( 1, "Transition file" + filename + " does not exist." );
     }
 
     // reset all associated data
-    line_num = 0;
+    line_num = 1;
     reward_dimension = 0;
     transition_info.clear();
     reward_info.clear();
 
     while ( std::getline( input_str, line ) ) {
-        line_num++;
         // set iterators
         if ( !ignore_line( line ) ) {
             curr = line.begin();
@@ -226,11 +232,12 @@ void PrismParser::parse_transition_file( const std::string &filename ){
             match_transition();
         
         }
+        line_num++;
     }
 
     for ( const auto &[ id, data ] : transition_info ){
         if ( !data.valid_probabilities() ){
-            throw ParseError(0, "invalid transition probabilities for state mapped to index " + std::to_string( id ) + " \n");
+            throw ParseError( 1 , "invalid transition probabilities for state mapped to index " + std::to_string( id ) + " \n");
         }
     }
 }
@@ -241,18 +248,18 @@ void PrismParser::parse_reward_file( const std::string &filename ){
     std::ifstream input_str( filename );
 
     if ( input_str.fail() ) {
-        throw ParseError( 0, "Reward file" + filename + " does not exist." );
+        throw ParseError( 1, "Reward file" + filename + " does not exist." );
     }
 
-    line_num = 0;
+    line_num = 1;
 
     while ( std::getline( input_str, line ) ) {
-        line_num++;
         if ( !ignore_line( line ) ) {
             curr = line.begin();
             end  = line.end();
             match_reward();
         }
+        line_num++;
     }
 
     // set dimension for next file
@@ -343,11 +350,14 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
         max_vec.push_back( max );
     }
 
+    if ( translate_indices ) {
+        initial_state = translate( std::to_string( initial_state ), true );
+    }
 
-    return MDP< double >( std::move( transitions ),
-                          std::move( rewards ), 
-                          bounds, 
-                          translate( std::to_string( initial_state ), true ) );
+    return MDP< double >( std::move( transitions )
+                        , std::move( rewards )
+                        , bounds
+                        , initial_state );
 }
 
 
@@ -381,10 +391,12 @@ bool PrismParser::ignore_line( const std::string &line) {
 }
 
 
+// this works, apparently
 size_t PrismParser::string_to_ull( const std::string &input ) {
 
-    std::istringstream iss( input );
     size_t size;
+    std::istringstream iss( input );
+
     iss >> size;
 
     return size;

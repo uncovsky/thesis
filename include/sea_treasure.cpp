@@ -1,6 +1,5 @@
 # include <algorithm>
-# include "models/sea_treasure.hpp"
-
+# include "benchmarks/sea_treasure.hpp"
 
 void DeepSeaTreasure::initialize_state( Coordinates pos ) {
     TreasureState res;
@@ -12,37 +11,6 @@ void DeepSeaTreasure::initialize_state( Coordinates pos ) {
     current_state = res;
 }
 
-Coordinates DeepSeaTreasure::dir_to_vec( Direction dir ) const {
-    int dx = 0, dy = 0;
-    switch ( dir ) {
-        case Direction::UP:
-            dy = -1;
-            break;
-        case Direction::DOWN:
-            dy = 1;
-            break;
-        case Direction::LEFT:
-            dx = -1;
-            break;
-        case Direction::RIGHT:
-            dx = 1;
-            break;
-    }
-    return Coordinates( dx, dy );
-}
-
-bool DeepSeaTreasure::collides( const Coordinates& pos, Direction dir ) const {
-    Coordinates next = pos + dir_to_vec( dir );
-
-    if ( inacessible_squares.find( next ) != inacessible_squares.end() )
-        return true;
-    if ( ( 0 > next.x ) || ( next.x >= width ) || 
-            ( 0 > next.y ) || ( next.y >= height ) ) {
-        return true;
-    }
-
-    return false;
-}
 
 bool DeepSeaTreasure::terminated( const TreasureState& s ){
     return s.treasure_collected;
@@ -127,7 +95,7 @@ std::pair< DeepSeaTreasure::reward_t, DeepSeaTreasure::reward_t > DeepSeaTreasur
 
     // TODO: change later
     min_vec = { 0, -1 };
-    max_vec = { 150, 0 };
+    max_vec = { 1, 0 };
 
     return std::make_pair( min_vec, max_vec );
 }
@@ -137,7 +105,7 @@ std::vector< Direction > DeepSeaTreasure::get_actions( const TreasureState &s ) 
     std::vector< Direction > result;
     for ( auto dir : { Direction::UP, Direction::DOWN, Direction::LEFT, Direction::RIGHT } ) {
 
-        if ( !collides( s.position, dir ) ){
+        if ( !collides( s.position, dir, height, width ) ){
             result.push_back( dir );
         }
     }

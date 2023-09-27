@@ -1,13 +1,15 @@
-#include "models/env_wrapper.hpp"
-#include "models/mdp.hpp"
-#include "models/sea_treasure.hpp"
-#include "models/resource_gathering.hpp"
+#include "benchmarks/frozen_lake.hpp"
+#include "benchmarks/sea_treasure.hpp"
+#include "benchmarks/resource_gathering.hpp"
 #include "geometry/pareto.hpp"
 #include "geometry/polygon.hpp"
+#include "models/env_wrapper.hpp"
+#include "models/mdp.hpp"
 #include "solvers/brtdp.hpp"
 #include "solvers/chvi.hpp"
-#include "parser.hpp"
+#include "utils/evaluation.hpp"
 
+#include "parser.hpp"
 #include <iostream>
 
 
@@ -103,6 +105,18 @@ void resource_check(){
 
 int main(){
 
+    FrozenLake lake;
+    EnvironmentWrapper< Coordinates, Direction, std::vector< double >, double > envw( &lake );
+    /*
+    CHVIExactSolver chvi( std::move( envw ), { 0.95, 0.95 } );
+    auto res = chvi.solve( 0.1 );
+    std::cout << res;
+    */
+    BRTDPSolver brtdp( std::move( envw ), { 0.95, 0.95 } );
+    auto res = brtdp.solve( 0.1 );
+
+    return 0;
+
 
     /* example: using the function to build the example problematic two state
      * mdp from the CON-MODP paper, each state has two deterministic actions
@@ -127,8 +141,6 @@ int main(){
                 1 );
 
 
-    */
-    /*
     test_brtdp( "../benchmarks/test_mdp.tra",
                 {
                     "../benchmarks/test_mdp.trew"
@@ -145,12 +157,10 @@ int main(){
                 { 0.9, 0.9 },
                 0,
                 0.0000001 );
-
-
-    treasure_check();
     */
-
     resource_check();
+
+    // treasure_check();
 
 
     return 0;

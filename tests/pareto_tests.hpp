@@ -31,26 +31,6 @@ void test_nondominated(  ){
     remove_dominated_alt( test );
     assert( test == result );
 
-    nondominated_union( result_copy, std::vector< Point< double > > ({
-                                                                       { 0.0, 0.0 },
-                                                                       { 0.0, 0.0 },
-                                                                       { -3.0, 0.9 }
-                                                                       }) );
-    assert( result_copy == result );
-
-    nondominated_union( result_copy, std::vector< Point< double > > ({}));
-
-    assert( result_copy == result );
-
-    nondominated_union( result_copy, std::vector< Point< double > >({
-                                                                       { 1.0, 1.0 },
-                                                                       { 1.0, 1.0 },
-                                                                       { -3.0, 0.9 },
-                                                                       { 3.5, 6.0 }
-                                                                       }) );
-    result = { { 3.5, 6.0 } };
-    assert( result_copy == result );
-
     std::vector< Point< double > > test2({ { 1.05, 1.03 },
                                     { 1.00, 1.00 },
                                     { 2.00, 1.01 },
