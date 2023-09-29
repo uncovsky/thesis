@@ -41,18 +41,24 @@ class CHVIExactSolver{
 
         Bounds< value_t > result;
 
+        std::vector< Bounds< value_t > > successors;
+
         for ( const auto &[ succ, prob ] : transitions ) {
-           Bounds< value_t > succ_bound = env.get_state_bound( succ );
-           succ_bound.multiply_bounds( prob );
-           result.sum_bounds( succ_bound );
+           successors.emplace_back( env.get_state_bound( succ ) );
+           successors.back().multiply_bounds( prob );
         }
 
-        result.nondominated();
+        result.sum_successors( successors );
+
+        // result.nondominated();
         result.multiply_bounds( discount_params );
-        result.shift_bounds( env.get_expected_reward( s, a ) ); 
+        result.shift_bounds( env.get_expected_reward( s, a ) );
+
         // get the lowest possible objective value and run the pareto operator
+        /*
         auto [ ref_point, _ ] = env.min_max_discounted_reward();
         result.pareto( ref_point );
+        */
 
         env.set_bound( s, a, std::move( result ) );
     }

@@ -253,22 +253,34 @@ class BRTDPSolver{
     /* BRTDP update of L(s,a) and U(s, a) */
     void update_bounds( state_t s, action_t a ) {
         std::map< state_t, double > transitions = env.get_transition( s, a );
-
         Bounds< value_t > result;
 
+        /*
+
         for ( const auto &[ succ, prob ] : transitions ) {
-           Bounds< value_t > succ_bound = env.get_state_bound( succ );
-           succ_bound.multiply_bounds( prob );
-           result.sum_bounds( succ_bound );
+            Bounds< value_t > successor_bound = env.get_state_bound( succ );
+            successor_bound.multiply_bounds( prob );
+            result.sum_bound( successor_bound );
         }
 
-        // result.nondominated();
+        result.multiply_bounds( discount_params );
+        result.shift_bounds( env.get_expected_reward( s, a ) );
+        auto [ ref_point, _ ] = env.min_max_discounted_reward();
+        result.pareto( ref_point );
+        */
+
+        std::vector< Bounds< value_t > > successors;
+
+        for ( const auto &[ succ, prob ] : transitions ) {
+           successors.emplace_back( env.get_state_bound( succ ) );
+           successors.back().multiply_bounds( prob );
+        }
+
+        result.sum_successors( successors );
         result.multiply_bounds( discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
 
-        // get the lowest possible objective value and run the pareto operator
-        auto [ ref_point, _ ] = env.min_max_discounted_reward();
-        result.pareto( ref_point );
+
 
         env.set_bound( s, a, std::move( result ) );
     }

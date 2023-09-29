@@ -185,8 +185,8 @@ public:
                 new_pt[ 0 ] += other[ 0 ];
             }
 
-            vertices = new_pt;
-            facets = { Facet( new_pt, new_pt ) };
+            vertices = { new_pt };
+            facets = { Facet( {new_pt, new_pt} ) };
         }
 
         // else 2d
@@ -202,7 +202,7 @@ public:
      * linear time 2D minkowski sum for the bound update
      * sets *this to minkowski sum of args
      */
-    void multiple_minkowski_sum( const std::vector< const Polygon * > &args ){
+    void multiple_minkowski_sum( const std::vector< const Polygon< value_t > * > &args ){
         std::vector< Point< value_t > > resulting_vertices;
 
         // indices into vertex array of each polygon 
@@ -215,7 +215,7 @@ public:
         };
 
         auto polygon_done = [ & ]( size_t polygon_idx ){
-            return offsets [ polygon_idx ] != ( *args[ polygon_idx ] ).get_vertices().size() - 1; 
+            return offsets[ polygon_idx ] == args[ polygon_idx ]->get_vertices().size() - 1; 
         };
 
         auto sum_unfinished = [ & ](){
@@ -226,7 +226,7 @@ public:
         };
 
 
-        while ( sum_unfinished ){
+        while ( sum_unfinished() ){
             Point< value_t > next = { 0, 0 };
             for ( size_t i = 0; i < args.size(); i++ ){
                 // select current point in polygon i and add it to next vertex
@@ -237,15 +237,20 @@ public:
 
             resulting_vertices.push_back( next );
 
-            size_t next_idx = 0;
-            std::vector< size_t > incremented_indices = { 0 };
+            size_t next_idx = args.size();
+            std::vector< size_t > incremented_indices = {};
 
             /* investigate the next edge of each polygon, select those edges
              * that correspond to the least polar angle and mark them for the
              * next shift */ 
-            for ( size_t i = 1; i < args.size(); i++ ){
+            for ( size_t i = 0; i < args.size(); i++ ){
 
                 if ( polygon_done( i ) ) { continue; }
+                if ( next_idx == args.size() ) {
+                    next_idx = i;
+                    incremented_indices = { i };
+                    continue;
+                }
 
                 Point< value_t > Pcurr = get_ith_vertex( next_idx, offsets[ next_idx ] );
                 Point< value_t > Pnext = get_ith_vertex( next_idx, offsets[ next_idx ] + 1 );
@@ -254,10 +259,10 @@ public:
                 Point< value_t > Qnext = get_ith_vertex( i, offsets[i] + 1 );
 
                 subtract( Qnext, Qcurr );
-                double ccw = ccw( Pnext, Pcurr, Qnext );
+                double ccw_val = ccw( Pnext, Pcurr, Qnext );
 
-                if ( approx_zero( ccw ) ) { incremented_indices.push_back( i ); }
-                else if ( ccw < 0 ) { 
+                if ( approx_zero( ccw_val ) ) { incremented_indices.push_back( i ); }
+                else if ( ccw_val < 0 ) { 
                     next_idx = i;
                     incremented_indices = { i };
                 }
@@ -273,8 +278,8 @@ public:
         // add last vertex
         Point< value_t > next = { 0, 0 };
         for ( size_t i = 0; i < args.size(); i++ ){
-            next[0] += args[i].get_vertices().back()[0];
-            next[0] += args[i].get_vertices().back()[1];
+            next[0] += args[i]->get_vertices().back()[0];
+            next[1] += args[i]->get_vertices().back()[1];
         }
         resulting_vertices.push_back( next );
 

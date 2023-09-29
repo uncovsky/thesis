@@ -8,6 +8,7 @@
 #include "solvers/brtdp.hpp"
 #include "solvers/chvi.hpp"
 #include "utils/evaluation.hpp"
+#include "utils/prng.hpp"
 
 #include "parser.hpp"
 #include <iostream>
@@ -91,9 +92,9 @@ void resource_check(){
 
     BRTDPSolver brtdp( std::move( env_wrap ), { 0.9, 0.9 } );
 
-    // CHVIExactSolver chvi( std::move( env_wrap2 ), { 0.9, 0.9 } );
-    // auto start_bound2 = chvi.solve( 0.1 );
-    // std::cout << start_bound2;
+     CHVIExactSolver chvi( std::move( env_wrap2 ), { 0.9, 0.9 } );
+     auto start_bound2 = chvi.solve( 0.1 );
+     std::cout << start_bound2;
 
     // solve up to given precision
     auto start_bound = brtdp.solve( 0.1 );
@@ -104,18 +105,27 @@ void resource_check(){
 }
 
 int main(){
+    PRNG gen;
+    std::set< Coordinates > randpits;
+    for ( int i = 0; i < gen.rand_int(1000, 3148); ++i ) {
+       randpits.insert( Coordinates( gen.rand_int( 1, 49), gen.rand_int ( 1, 49 ) ) );
+    }
 
-    FrozenLake lake;
+    for ( auto &x : randpits ) {
+        std::cout << x << "\n";
+    }
+
+    FrozenLake lake, lake2( 50, 50, randpits, 0.15 );
+
     EnvironmentWrapper< Coordinates, Direction, std::vector< double >, double > envw( &lake );
+    EnvironmentWrapper< Coordinates, Direction, std::vector< double >, double > envw2( &lake2 );
     /*
-    CHVIExactSolver chvi( std::move( envw ), { 0.95, 0.95 } );
-    auto res = chvi.solve( 0.1 );
-    std::cout << res;
+        CHVIExactSolver chvi( std::move( envw ), { 0.95, 0.95 } );
+        auto res = chvi.solve( 0.1 );
+        std::cout << res;
     */
-    BRTDPSolver brtdp( std::move( envw ), { 0.95, 0.95 } );
+    BRTDPSolver brtdp( std::move( envw ), { 0.9, 0.9 } );
     auto res = brtdp.solve( 0.1 );
-
-    return 0;
 
 
     /* example: using the function to build the example problematic two state
@@ -132,6 +142,8 @@ int main(){
                 0,  // id of starting state
                 0.1 // precision
                   );
+
+    resource_check();
 
     /*
     test_brtdp( "../benchmarks/linked_rings.tra",
@@ -158,7 +170,6 @@ int main(){
                 0,
                 0.0000001 );
     */
-    resource_check();
 
     // treasure_check();
 

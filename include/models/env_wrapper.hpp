@@ -82,8 +82,21 @@ public:
         upp_lhs.insert( upp_lhs.end(), upp_rhs.begin(), upp_rhs.end() );
     }
 
-    // performs a minkowski sum with each respective bound of other
-    void sum_bounds( const Bounds< value_t > &other ){
+    // saves minkowski sum of args bounds to this
+    void sum_successors( const std::vector< Bounds< value_t > > &args ){
+        std::vector< const Polygon< value_t > * > lower_polygons, upper_polygons;
+
+        for ( const auto &bound : args ){
+            const Polygon< value_t > * ptr_upp = &( bound.upper() ), * ptr_low = &( bound.lower() );
+            lower_polygons.push_back( ptr_low );
+            upper_polygons.push_back( ptr_upp );
+        }
+
+        upper_bound.minkowski_sum( upper_polygons );
+        lower_bound.minkowski_sum( lower_polygons );
+    }
+
+    void sum_bound( const Bounds< value_t > &other ){
         lower_bound.minkowski_sum( other.lower() );
         upper_bound.minkowski_sum( other.upper() );
     }
@@ -235,36 +248,6 @@ public:
         auto [ lower_bound_pt, upper_bound_pt ] = min_max_discounted_reward();
         Bounds< value_t > result ( { lower_bound_pt }, { upper_bound_pt } );
 
-        // we have more information if s is terminal
-        if ( is_terminal_state( s ) ) {
-
-            std::vector< value_t > rew = get_expected_reward( s, a );
-            std::vector< value_t > min_rew = rew, max_rew = rew;
-
-            for ( const auto &other_a : get_actions( s ) ) {
-                min_rew = std::min( min_rew, get_expected_reward( s, other_a ) );
-                max_rew = std::max( max_rew, get_expected_reward( s, other_a ) );
-            }
-
-            // get max reward in this 
-            std::vector< value_t > discount_copy( discount_params );
-            multiply( value_t( -1 ), discount_copy );
-            add( value_t( 1 ), discount_copy );
-
-            divide( min_rew, discount_copy );
-            divide( max_rew, discount_copy );
-
-            // gamma * min discounted reward from terminal state
-            multiply( min_rew, discount_params );
-            multiply( max_rew, discount_params );
-
-            // r(s, a) + gamma * [max|min] reward 
-            add( min_rew, rew );
-            add( max_rew, rew );
-         
-            result = Bounds< value_t >( { min_rew }, { max_rew } );
-        }
-        
         // set facets correctly preemptively, since we need to compute distance
         // with these bounds as well ( facets need to be set )
         result.pareto( lower_bound_pt );
