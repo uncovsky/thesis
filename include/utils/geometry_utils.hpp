@@ -125,13 +125,16 @@ value_t line_segment_distance( const Point< value_t > &beg,
     return euclidean_distance( line, x );
 }
 
+/* helper functions for 2D convex hull and minkowski sum 
+ * checks if point is in ccw halfspace determined by line x1->x2 
+ */
 template < typename value_t > 
 double ccw( const Point< value_t > &x1,
             const Point< value_t > &x2,
             const Point< value_t > &p ){
-            value_t res = ( x2[0] - x1[0] ) * ( p[1] - x1[1] ) - ( x2[1] - x1[1] ) * ( p[0] - x1[0] );
-            return static_cast< double > ( res );
-    }
+    value_t res = ( x2[0] - x1[0] ) * ( p[1] - x1[1] ) - ( x2[1] - x1[1] ) * ( p[0] - x1[0] );
+    return static_cast< double > ( res );
+}
 
 // returns a vector of extreme points along respective dimensions in input
 // all points in input must be of the same dimensions

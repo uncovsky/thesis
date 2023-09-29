@@ -6,7 +6,7 @@
 # include <sstream>
 # include <string>
 
-# include "geometry/quickhull.hpp"
+# include "utils/prng.hpp"
 # include "utils/geometry_utils.hpp"
 
 /*
@@ -113,23 +113,17 @@ public:
         return vertices[0].size();
     }
 
-    /* multiplication & addition, both element-wise and single elements */
+
     void multiply_scalar( value_t mult ) {
         for ( Point< value_t > &p : vertices ) {
+            // p = mult p
             multiply( mult, p );
         }    
     }
 
-    void multiply_vector( const Point< value_t > &mult ) {
+    void multiply_vector( const std::vector< value_t > &mult ) {
         for ( Point< value_t > &p : vertices ) {
             multiply( p, mult );
-        }    
-    }
-
-    void shift_scalar( value_t shift ) {
-        for ( Point< value_t > &p : vertices ) {
-            // foreach i p[i] += shift
-            add( shift, p );
         }    
 
     }
@@ -140,6 +134,17 @@ public:
             add( p, shift );
         }    
 
+    }
+
+    /* precondition:
+     *  convex hull called ( vertices sorted + convex polygon )
+     */
+    void init_facets() {
+        facets.clear();
+
+        for ( size_t i = 0; i < vertices.size() - 1; i++ ) {
+            facets.push_back( Facet({ vertices[i], vertices[i + 1] }) );
+        }
     }
 
     // TODO: use the fact that both polygons are convex, so its possible to
@@ -166,11 +171,120 @@ public:
         vertices = std::move( new_vertices );
     }
 
+
+    void minkowski_sum( const std::vector< const Polygon * > &args ) {
+        if ( get_dimension() > 2 ) {
+            throw std::runtime_error("only 1d/2d operations supported for now");
+        }
+
+        if ( get_dimension() == 1 ){
+            Point< value_t > new_pt = { 0 };
+            for ( size_t i = 0; i < args.size(); i++ ){
+                // only one point possible
+                Point< value_t > other = args[i]->get_vertices()[0];
+                new_pt[ 0 ] += other[ 0 ];
+            }
+
+            vertices = new_pt;
+            facets = { Facet( new_pt, new_pt ) };
+        }
+
+        // else 2d
+        multiple_minkowski_sum( args );
+    }
+
+    /* preconditions: all entries in args are correctly initalized, i.e.
+     * upper_convex_hull() has been called, vertices are sorted and 
+     * form a convex polygon that is nonempty
+     * args are all also 2d polygons
+     * see e.g. : https://cp-algorithms.com/geometry/minkowski.html
+     *
+     * linear time 2D minkowski sum for the bound update
+     * sets *this to minkowski sum of args
+     */
+    void multiple_minkowski_sum( const std::vector< const Polygon * > &args ){
+        std::vector< Point< value_t > > resulting_vertices;
+
+        // indices into vertex array of each polygon 
+        std::vector< size_t > offsets( args.size(), 0 );
+
+        // helper lambdas for indexing using both arrays
+
+        auto get_ith_vertex = [ & ] ( size_t polygon_idx, size_t vertex_idx ){
+            return args[ polygon_idx ]->get_vertices()[ vertex_idx ];
+        };
+
+        auto polygon_done = [ & ]( size_t polygon_idx ){
+            return offsets [ polygon_idx ] != ( *args[ polygon_idx ] ).get_vertices().size() - 1; 
+        };
+
+        auto sum_unfinished = [ & ](){
+            for ( size_t i = 0; i < offsets.size(); i++ ) {
+                if ( !polygon_done( i ) ) { return true; }
+            }
+            return false;
+        };
+
+
+        while ( sum_unfinished ){
+            Point< value_t > next = { 0, 0 };
+            for ( size_t i = 0; i < args.size(); i++ ){
+                // select current point in polygon i and add it to next vertex
+                Point< value_t > added = get_ith_vertex( i, offsets[i] );
+                next[0] += added[0];
+                next[1] += added[1];
+            }
+
+            resulting_vertices.push_back( next );
+
+            size_t next_idx = 0;
+            std::vector< size_t > incremented_indices = { 0 };
+
+            /* investigate the next edge of each polygon, select those edges
+             * that correspond to the least polar angle and mark them for the
+             * next shift */ 
+            for ( size_t i = 1; i < args.size(); i++ ){
+
+                if ( polygon_done( i ) ) { continue; }
+
+                Point< value_t > Pcurr = get_ith_vertex( next_idx, offsets[ next_idx ] );
+                Point< value_t > Pnext = get_ith_vertex( next_idx, offsets[ next_idx ] + 1 );
+
+                Point< value_t > Qcurr = get_ith_vertex( i, offsets[i] );
+                Point< value_t > Qnext = get_ith_vertex( i, offsets[i] + 1 );
+
+                subtract( Qnext, Qcurr );
+                double ccw = ccw( Pnext, Pcurr, Qnext );
+
+                if ( approx_zero( ccw ) ) { incremented_indices.push_back( i ); }
+                else if ( ccw < 0 ) { 
+                    next_idx = i;
+                    incremented_indices = { i };
+                }
+
+            }
+
+            // move all vertices corresponding to edges with least polar angles
+            for ( size_t idx : incremented_indices ){
+                offsets[ idx ]++;
+            }
+        }
+
+        // add last vertex
+        Point< value_t > next = { 0, 0 };
+        for ( size_t i = 0; i < args.size(); i++ ){
+            next[0] += args[i].get_vertices().back()[0];
+            next[0] += args[i].get_vertices().back()[1];
+        }
+        resulting_vertices.push_back( next );
+
+        vertices = std::move( resulting_vertices );
+        init_facets();
+    }
+
     /* downward closure for 1/2 dimensions
      * preconditions:
-     *  array vertices contains only nondominated elements
-     *  vertices form a convex polygon ( so convex_hull has been called
-     *  beforehand )
+     * convex hull called beforehand
      * reference point contains minimal values for each objective
      */
     void downward_closure( const Point< value_t > &reference_point ) {
@@ -190,6 +304,7 @@ public:
         if ( vertices.empty() )
             return;
 
+        //TODO: use the fact that convex hull sorts
         auto extreme_points = get_extreme_points( vertices );
 
         Point< value_t > max_x_point = extreme_points[0].second;
@@ -203,44 +318,6 @@ public:
         facets.push_back( Facet({ facet_y, max_y_point }) );
     }
 
-
-
-    // computes convex hull of vertices, removing all but the vertices forming
-    // the hull. also correctly initializes facets 
-    void convex_hull() {
-
-        if ( vertices.empty() )
-            return;
-        if ( get_dimension() > 2 ) {
-            std::cout << "Higher dimension convex hulls are currently unsupported." << std::endl;
-            assert( false );
-        }
-
-        // handle one dimensional case, since only nondominated points, only
-        // one vertex is possible
-        if ( get_dimension() == 1 ) {
-            facets = { Facet( { vertices[0], vertices[0] } ) };
-            return;
-        }
-        
-
-        std::vector< Point< value_t > > result = quickhull( vertices );
-        std::vector< Facet > new_facets;
-
-        size_t vertex_count = result.size();
-
-        for ( size_t i = 0; i < vertex_count - 1; i++ ) {
-            new_facets.push_back( Facet({ result[i], result[i + 1] }) );
-        }
-
-        if ( vertex_count > 1 )
-            new_facets.push_back( Facet({ result.back(), result[0] }) );
-
-        std::vector< Point< value_t > > new_vertices( result.begin(), result.end() );
-
-        vertices = std::move( new_vertices );
-        facets = std::move( new_facets );
-    }
 
     // more efficient + automatically remove dominated solutions
     // eps determines the granularity of the hull
@@ -278,14 +355,8 @@ public:
             }
         }
 
-        facets.clear();
-
-        for ( size_t i = 0; i < hull.size() - 1; i++ ) {
-            facets.push_back( Facet({ hull[i], hull[i + 1] }) );
-        }
-
         vertices = std::move( hull );
-
+        init_facets();
     }
 
     void pareto( const Point< value_t >& ref_point ){
@@ -329,7 +400,7 @@ public:
     }
 
 
-    std::string to_string( ) const {
+    std::string to_string() const {
         std::stringstream str;
 
         for ( const auto &vert : vertices ) {

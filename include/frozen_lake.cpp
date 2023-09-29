@@ -125,8 +125,8 @@ FrozenLake::FrozenLake( size_t height
                                                   , height( height )
                                                   , width( width )
                                                   , pits( pits )
-                                                  , current_state()
-                                                  , initial_state()
+                                                  , current_state( 0, 0 )
+                                                  , initial_state( 0, 0 )
 {
 
 }

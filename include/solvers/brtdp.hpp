@@ -37,6 +37,10 @@ struct ExplorationSettings {
 };
 
 
+/* templated type value_t is the underlying type used to represent reward
+ * values of the model
+ */
+
 template < typename state_t, typename action_t, typename value_t >
 class BRTDPSolver{
 
@@ -142,22 +146,21 @@ class BRTDPSolver{
      */
     state_t bound_difference_state_selection( const std::map< state_t, double > &transitions ) {
 
-        value_t max_diff(0);
+        value_t diff_sum( 0 );
         std::vector< value_t > diff_values;
         for ( const auto &[ s, prob ] : transitions ) {
             diff_values.push_back( env.get_state_bound( s ).bound_distance() * prob );
-            max_diff = std::max( max_diff, diff_values.back() );
+            diff_sum += diff_values.back();
         }
 
-        std::vector< size_t > maximising_indices;
-        for ( size_t i = 0; i < transitions.size(); i++ ) {
-            if ( diff_values[i] == max_diff ) { maximising_indices.push_back( i ); };
+        size_t i = 0;
+        std::map< state_t, value_t > diff_distribution;
+        for ( const auto &[ s, _ ] : transitions ) {
+            diff_distribution[ s ] = diff_values[ i ] / diff_sum;
+            i++;
         }
 
-        size_t chosen_index = uniform_index( maximising_indices );
-
-        // return the chosen_index-th key ( state ) from the map
-        return std::next( transitions.begin(), chosen_index )->first;
+        return gen.sample_distribution( diff_distribution );
     }
 
     // picks action from avail actions based on specified heuristic
