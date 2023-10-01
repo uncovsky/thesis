@@ -8,6 +8,8 @@ enum class Direction {
     UP, DOWN, LEFT, RIGHT
 };
 
+// origin of the coordinate system is in the upper left corner
+// ( as is the case in most benchmarks )
 struct Coordinates{
 
     int x, y;

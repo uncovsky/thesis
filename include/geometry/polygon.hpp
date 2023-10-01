@@ -142,6 +142,11 @@ public:
     void init_facets() {
         facets.clear();
 
+        if ( vertices.size() == 1 ) {
+            facets.push_back( Facet( { vertices[0], vertices[0] } ) );
+            return;
+        }
+        
         for ( size_t i = 0; i < vertices.size() - 1; i++ ) {
             facets.push_back( Facet({ vertices[i], vertices[i + 1] }) );
         }
@@ -186,7 +191,7 @@ public:
             }
 
             vertices = { new_pt };
-            facets = { Facet( {new_pt, new_pt} ) };
+            init_facets();
         }
 
         // else 2d
@@ -337,7 +342,7 @@ public:
         // keep only max element
         if ( get_dimension() == 1 ) {
             vertices = { *std::max_element( vertices.begin(), vertices.end() ) };
-            facets = { Facet( { vertices[0], vertices[0] } ) };
+            init_facets();
             return;
         }
 
@@ -352,7 +357,11 @@ public:
             else if ( hull.size() < 2 ) { hull.push_back( pt ); }
             else { 
                 size_t i = hull.size() - 1;
-                while ( ( hull.size() >= 2 ) && ( ccw( hull[i - 1], hull[i], pt ) <= eps ) ){
+                /* if last vertex of teh hulls lies in CW direction from
+                 * pt->hull[i-1], remove the last element of the hull
+                 * repeat
+                 */
+                while ( ( hull.size() >= 2 ) && ( ccw( pt, hull[i - 1], hull[i] ) <= eps ) ){
                     hull.pop_back();
                     i--;
                 }
@@ -373,8 +382,10 @@ public:
     // correctly initialized, input point is not dominated by any point on
     // *this pareto curve
     value_t point_distance( const Point< value_t >& point ) const {
-        if ( facets.empty() )
-            return 0;
+
+        if ( facets.empty() ){
+            throw std::runtime_error("Distance from empty pareto curve");
+        }
 
         // handle one dimensional case, only one vertex is possible again
         if ( get_dimension() == 1 ) {

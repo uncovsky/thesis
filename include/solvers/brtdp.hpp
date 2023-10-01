@@ -15,28 +15,6 @@ enum class ActionSelectionHeuristic { Hypervolume,
                                       Uniform };
 
 
-struct ExplorationSettings {
-    
-/* global settings */
-    size_t max_iterations;
-
-    // bound distance on starting state to terminate solver
-    double precision;
-
-/* sampling settings */
-
-    // min/max dephts of trajectory
-    size_t min_trajectory, max_trajectory;
-
-    // bound distance that is sufficient to end the trajectory earlier
-    double bound_cutoff;
-
-    // state / action heuristics
-    StateSelectionHeuristic state_heuristic;
-    ActionSelectionHeuristic action_heuristic; 
-};
-
-
 /* templated type value_t is the underlying type used to represent reward
  * values of the model
  */

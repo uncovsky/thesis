@@ -59,7 +59,6 @@ inline std::ostream &operator<<( std::ostream& os, const Direction &dir ) {
 
 class DeepSeaTreasure : public Environment< TreasureState, Direction, std::vector< double > > {
 
-    using Obervation = Environment< Coordinates, Direction, std::vector< double > >::Observation;
     using reward_t = std::vector< double >;
 
     double noise = 0.0;
