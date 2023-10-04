@@ -42,7 +42,7 @@ std::vector< double > FrozenLake::get_reward( const Coordinates &pos, const Dire
     for ( const auto &[ succ, prob ] : transition ){
         if ( succ == Coordinates( height - 1, width - 1 ) ) {
             // add 1 * prob reward if hit target
-            rewards[0] += prob;
+            rewards[0] += prob * 1000;
         }
 
         else if ( pits.find( succ ) != pits.end() ) {
@@ -55,7 +55,7 @@ std::vector< double > FrozenLake::get_reward( const Coordinates &pos, const Dire
 }
 
 std::pair< std::vector< double >, std::vector< double > > FrozenLake::reward_range() const {
-    std::vector< double > min_vec = { 0, -1 }, max_vec = { 1, 0 };
+    std::vector< double > min_vec = { 0, -1 }, max_vec = { 100, 0 };
     return std::make_pair( min_vec, max_vec );
 }
 

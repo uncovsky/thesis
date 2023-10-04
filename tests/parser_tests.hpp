@@ -2,6 +2,8 @@
 
 # include <cassert>
 # include <iostream>
+
+# include "solvers/config.hpp"
 # include "parser.hpp"
 
 
@@ -37,8 +39,11 @@ void model1test() {
         std::cout << x << " ";
 
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap3( &mdp2 );
-    BRTDPSolver brtdp( std::move( env_wrap3 ) , { 0.9, 0.9 } );
-    brtdp.solve( 0.2 );
+    ExplorationSettings< double > config;
+    config.precision = 0.2;
+    config.discount_params = { 0.9, 0.9 };
+    BRTDPSolver brtdp( std::move( env_wrap3 ) , config );
+    brtdp.solve();
      
     // test 2d reward file
     auto mdp3 = parser.parse_model( "../tests/parser_files/model1.tra",

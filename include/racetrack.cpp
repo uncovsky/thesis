@@ -30,17 +30,17 @@ std::map< VehicleState, double > Racetrack::get_transition( const VehicleState &
 
     std::map< VehicleState, double > result;
     if ( vehicle_collides( succ ) ){
-        result[ initial_state ] = 1 - slip_prob;
+        result[ initial_state ] += 1 - slip_prob;
     }
     else {
-        result[ succ ] = 1 - slip_prob;
+        result[ succ ] += 1 - slip_prob;
     }
 
     if ( vehicle_collides( succ_slip ) ){
-        result[ initial_state ] = slip_prob;
+        result[ initial_state ] += slip_prob;
     }
     else{
-        result[ succ_slip ] = slip_prob;
+        result[ succ_slip ] += slip_prob;
     }
 
     return result;
@@ -54,7 +54,8 @@ Racetrack::reward_t Racetrack::get_reward( const VehicleState &pos,
         return { 0, 0 };
     }
     // return -1 * sum of velocities as fuel reward and -1 time rew
-    double velocity_val = std::abs( action.first ) + std::abs( action.second );
+    double velocity_val = std::abs( pos.velocity.first + action.first ) + std::abs( pos.velocity.second + action.second );
+    // todo replace
     return { -1 * velocity_val, -1 };
 }
 
@@ -63,8 +64,8 @@ std::pair< Racetrack::reward_t, Racetrack::reward_t > Racetrack::reward_range() 
 
     // TODO: this is technically incorrect, but initialization has to be
     // smarter for large reachability problems
-    min_rew = { -1, -1 };
-    max_rew = { 0, 0 };
+    min_rew = { -2, -2 };
+    max_rew = { -1, 0 };
 
     return std::make_pair( min_rew, max_rew );
 }
@@ -73,7 +74,7 @@ std::vector< Racetrack::action_t > Racetrack::get_actions( const VehicleState& p
     
     // make all states with goal position terminal w. selfloop
     if ( goal_states.find( pos.position ) != goal_states.end() ){
-        return { std::make_pair(0, 0) };
+        return { { 0, 0 } };
     }
     std::vector< action_t > res;
 
@@ -123,7 +124,8 @@ void Racetrack::from_file( const std::string &filename ){
         throw std::runtime_error( "file " + filename + " does not exist");
     }
     
-    std::string line, token;
+    std::string line;
+    char token;
     size_t h = 0, w = 0;
 
     Coordinates initial_pos;
@@ -138,24 +140,25 @@ void Racetrack::from_file( const std::string &filename ){
         std::stringstream ss( line );
 
         while ( ss >> token ) {
-            if ( token == "x" ) {
+
+            if ( token == 'x' ) {
                 collisions.emplace( idx, h );
             }
 
-            else if ( token == "g" ){
+            else if ( token == 'g' ){
                 goals.emplace( idx, h );
             }
 
-            else if ( token == "s" ){
+            else if ( token == 's' ){
                 if ( start_defined ){
                     throw std::runtime_error( "multiple starting states in" + filename );
+                }
                 initial_pos = Coordinates( idx, h );
                 start_defined = true;
-                }
             }
 
-            // otherwsie free space
-            else if ( token != "." ){
+            // otherwise free space
+            else if ( token != '.' ){
                 throw std::runtime_error( "invalid token in " + filename );
             }
 

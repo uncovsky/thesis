@@ -42,8 +42,24 @@ struct VehicleState {
         position.y += velocity.second;
     }
 
+    bool operator<( const VehicleState& other ) const{
+        return ( position < other.position ) || 
+               ( ( position == other.position ) && ( velocity < other.velocity ) ) ;
+    }
+
+
+    friend std::ostream &operator<<( std::ostream& os, const VehicleState &s ) {
+        os << s.position << " Speed: " << s.velocity.first << "; " << s.velocity.second;
+        return os;
+    }
+
 };
 
+// for trace output during trajectory sampling
+inline std::ostream &operator<<( std::ostream& os, const std::pair< int, int > &velocity ) {
+    os << velocity.first << "; " << velocity.second;
+    return os;
+}
 
 class Racetrack : public Environment< VehicleState, std::pair< int, int >,  std::vector< double > > {
 

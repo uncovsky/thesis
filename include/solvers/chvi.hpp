@@ -1,19 +1,20 @@
 #pragma once
 
-#include <queue>
-#include "models/env_wrapper.hpp"
-#include "utils/eigen_types.hpp"
-#include "utils/prng.hpp"
+# include <queue>
+# include "models/env_wrapper.hpp"
+# include "solvers/config.hpp"
+# include "utils/eigen_types.hpp"
+# include "utils/prng.hpp"
 
 template < typename state_t, typename action_t, typename value_t >
 class CHVIExactSolver{
 
     using EnvironmentHandle = EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t >;
+    ExplorationSettings< value_t > config;
 
     EnvironmentHandle env;
-    std::set< state_t > reachable_states;
 
-    std::vector< value_t > discount_params;
+    std::set< state_t > reachable_states;
 
     void set_reachable_states() {
         std::queue< state_t > q;
@@ -51,7 +52,7 @@ class CHVIExactSolver{
         result.sum_successors( successors );
 
         // result.nondominated();
-        result.multiply_bounds( discount_params );
+        result.multiply_bounds( config.discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
 
         // get the lowest possible objective value and run the pareto operator
@@ -66,20 +67,28 @@ class CHVIExactSolver{
 
 public:
     CHVIExactSolver( EnvironmentHandle &&_env, 
-                    const std::vector< value_t > discount_params ) :  
+                     const ExplorationSettings< value_t >& config) :  
                                                                      env( std::move( _env ) )
-                                                                   , reachable_states(  )
-                                                                   , discount_params( discount_params ) {  }
+                                                                   , reachable_states() 
+                                                                   , config( config )   {  }
 
-    Bounds< value_t > solve( value_t precision ) {
+    Bounds< value_t > solve() {
+
+        std::ofstream logs( config.filename + "_chvi-logs.txt" );
+        std::ofstream result( config.filename + "_chvi-result.txt" );
 
         size_t sweeps = 0;
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
-        env.set_discount_params( discount_params );
+
+        env.set_config( config );
         set_reachable_states();
         
-        while ( env.get_state_bound( starting_state ).bound_distance() >= precision ){
-            std::cout << "Sweep number: " << sweeps << ".\n";
+        while ( env.get_state_bound( starting_state ).bound_distance() >= config.precision ){
+
+            if ( config.trace ) {
+                logs << "Sweep number: " << sweeps << ".\n";
+            }
+
             for ( const state_t &s : reachable_states ) {
                 // initialize bound
                 if ( sweeps == 0 ) { env.discover( s ); }
@@ -91,11 +100,17 @@ public:
             }
 
             sweeps++;
+            if ( sweeps >= config.max_episodes ) { break; }
         }
 
-        env.write_statistics( false );
         auto start_bound = env.get_state_bound( starting_state );
-        std::cout << "distance: " << start_bound.bound_distance( ) << std::endl;
+        logs << "Total sweeps" << sweeps << "\n";
+        logs << "Converged distance" << start_bound.bound_distance() << "\n";
+        logs << start_bound;
+
+        env.write_exploration_logs( config.filename + "_chvi", true );
+        result << start_bound;
+
         return start_bound;
     }
 

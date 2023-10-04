@@ -14,7 +14,6 @@
  * as well, could also use an Eigen::Array with component-wise ops built in */
 
 // checks whether point lhs is pareto dominated by rhs
-
 template < typename value_t >
 bool is_dominated( const Point< value_t > &lhs, 
                    const Point< value_t > &rhs ) {
@@ -118,4 +117,32 @@ bool dominates_set( const Point< value_t > &point,
     
     return std::all_of( candidates.begin(), candidates.end(),
                         [&] ( auto candidate_pt ) { return is_dominated( candidate_pt, point ); });
+}
+
+
+/* precondition
+ *  ~ vertices sorted by descending x value and dominated pts removed
+ *  in our case only called after pareto() operator has run
+ *  and vertices sorted using Polygon::upper_right_hull()
+ */
+template< typename value_t >
+value_t hypervolume_indicator( const std::vector< Point< value_t > > &vertices,
+        const Point< value_t > &ref_point ) {
+    if ( ref_point.size() > 2 ){
+        throw std::runtime_error("Only 1D/2D hypervolume supported.");
+    }
+    if ( ref_point.size() == 1 ) {
+        return vertices[0][0] - ref_point[0];
+    }
+
+    Point< value_t > copy( ref_point );
+    value_t res( 0 );
+
+    // calculate disjoint areas
+    for ( const auto &pt : vertices ) {
+        res += ( pt[0] - copy[0] ) * ( pt[1] - copy[1] );
+        copy = pt;
+    }
+
+    return res;
 }

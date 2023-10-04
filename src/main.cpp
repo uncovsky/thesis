@@ -1,17 +1,24 @@
 #include "benchmarks/frozen_lake.hpp"
 #include "benchmarks/sea_treasure.hpp"
+#include "benchmarks/racetrack.hpp"
 #include "benchmarks/resource_gathering.hpp"
+
 #include "geometry/pareto.hpp"
 #include "geometry/polygon.hpp"
+
 #include "models/env_wrapper.hpp"
 #include "models/mdp.hpp"
+
 #include "solvers/brtdp.hpp"
 #include "solvers/chvi.hpp"
-#include "utils/evaluation.hpp"
+#include "solvers/config.hpp"
+
 #include "utils/prng.hpp"
 
 #include "parser.hpp"
 #include <iostream>
+
+
 
 
 /* runs the algorithm on mdp given by a transition file and 1 or 2 reward files
@@ -52,10 +59,14 @@ void test_brtdp( const std::string &transition_file,
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap( &mdp );
 
     // construct the solver object using the wrapper and discount parameters
-    BRTDPSolver brtdp( std::move( env_wrap ), discount_params );
+    ExplorationSettings< double > basic;
+    basic.discount_params = discount_params;
+    basic.precision = precision;
+
+    BRTDPSolver brtdp( std::move( env_wrap ), basic );
 
     // solve up to given precision
-    auto start_bound = brtdp.solve( precision );
+    auto start_bound = brtdp.solve();
 
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;
@@ -68,12 +79,15 @@ void treasure_check(){
 
     EnvironmentWrapper< TreasureState, Direction, std::vector<double>, double > env_wrap( &dst );
 
-    BRTDPSolver brtdp( std::move( env_wrap ), { 0.99, 0.99 } );
-    auto start_bound = brtdp.solve( 0.1 );
+    ExplorationSettings< double > config;
+    config.discount_params = { 0.99, 0.99 };
+    BRTDPSolver brtdp( std::move( env_wrap ), config );
+
+    auto start_bound = brtdp.solve();
     std::cout << start_bound;
 
     brtdp.load_environment( dst_convex );
-    start_bound = brtdp.solve( 0.1 );
+    start_bound = brtdp.solve();
     std::cout << start_bound;
 }
 
@@ -90,14 +104,15 @@ void resource_check(){
     EnvironmentWrapper< ResourceState, Direction, std::vector<double>, double > env_wrap( &env );
     EnvironmentWrapper< ResourceState, Direction, std::vector<double>, double> env_wrap2( &env );
 
-    BRTDPSolver brtdp( std::move( env_wrap ), { 0.9, 0.9 } );
+    ExplorationSettings< double > config;
+    BRTDPSolver brtdp( std::move( env_wrap ), config );
 
-     CHVIExactSolver chvi( std::move( env_wrap2 ), { 0.9, 0.9 } );
-     auto start_bound2 = chvi.solve( 0.1 );
+     CHVIExactSolver chvi( std::move( env_wrap2 ), config );
+     auto start_bound2 = chvi.solve();
      std::cout << start_bound2;
 
     // solve up to given precision
-    auto start_bound = brtdp.solve( 0.1 );
+    auto start_bound = brtdp.solve();
 
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;
@@ -105,74 +120,42 @@ void resource_check(){
 }
 
 int main(){
+
+
     PRNG gen;
     std::set< Coordinates > randpits;
-    for ( int i = 0; i < gen.rand_int(1000, 3148); ++i ) {
-       randpits.insert( Coordinates( gen.rand_int( 1, 49), gen.rand_int ( 1, 49 ) ) );
+    for ( int i = 0; i < 25; ++i ) {
+       randpits.insert( Coordinates( gen.rand_int( 1, 25), gen.rand_int ( 1, 25 ) ) );
     }
 
     for ( auto &x : randpits ) {
         std::cout << x << "\n";
     }
 
-    FrozenLake lake, lake2( 50, 50, randpits, 0.15 );
+
+    FrozenLake lake, lake2( 25, 25, randpits, 0.3 );
 
     EnvironmentWrapper< Coordinates, Direction, std::vector< double >, double > envw( &lake );
     EnvironmentWrapper< Coordinates, Direction, std::vector< double >, double > envw2( &lake2 );
-    /*
-        CHVIExactSolver chvi( std::move( envw ), { 0.95, 0.95 } );
-        auto res = chvi.solve( 0.1 );
-        std::cout << res;
-    */
-    BRTDPSolver brtdp( std::move( envw ), { 0.9, 0.9 } );
-    auto res = brtdp.solve( 0.1 );
 
+    ExplorationSettings< double > config;
+    config.discount_params =  { 0.99, 0.99 };
+    config.max_trajectory = 1000;
+    config.precision = 0.1;
+    config.filename = "laketest";
+    config.lower_bound_init = { 0, -1000 };
+    config.upper_bound_init = { 1, 1 };
 
-    /* example: using the function to build the example problematic two state
-     * mdp from the CON-MODP paper, each state has two deterministic actions
-     * - stay in state / go to other state, 
-     *   upon reaching state 0 get 1, 0 reward, upon reaching state 1 get reward 0, 1. */
+    BRTDPSolver brtdp( std::move( envw2 ), config );
+    brtdp.solve();
+    return 0; 
 
-    test_brtdp( "../tests/parser_files/model1.tra",  // transition file
-                { 
-                  "../tests/parser_files/model1.trew",  // reward files
-                  "../tests/parser_files/model1_2.trew"
-                }, 
-                { 0.5, 0.5 }, // discount params
-                0,  // id of starting state
-                0.1 // precision
-                  );
+    CHVIExactSolver chvi( std::move( envw2 ), config );
+    auto res = chvi.solve();
 
-    resource_check();
+    std::cout << res;
 
-    /*
-    test_brtdp( "../benchmarks/linked_rings.tra",
-                { "../benchmarks/linked_rings.trew" },
-                { 0.9, 0.9 },
-                0,
-                1 );
-
-
-    test_brtdp( "../benchmarks/test_mdp.tra",
-                {
-                    "../benchmarks/test_mdp.trew"
-                },
-                { 0.95, 0.95 },
-                0,
-                0.0000001 );
-
-    test_brtdp( "../benchmarks/resource.tra",
-                {
-                    "../benchmarks/resource_gold.trew",
-                    "../benchmarks/resource_gems.trew",
-                },
-                { 0.9, 0.9 },
-                0,
-                0.0000001 );
-    */
-
-    // treasure_check();
-
+    // auto res = brtdp.solve( 0.1 );
 
     return 0;
 }

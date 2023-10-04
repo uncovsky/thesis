@@ -178,24 +178,31 @@ public:
 
 
     void minkowski_sum( const std::vector< const Polygon * > &args ) {
-        if ( get_dimension() > 2 ) {
+
+        if ( args.empty() ){
+            return;
+        }
+
+        if ( args[0]->get_dimension() > 2 ) {
             throw std::runtime_error("only 1d/2d operations supported for now");
         }
 
-        if ( get_dimension() == 1 ){
-            Point< value_t > new_pt = { 0 };
-            for ( size_t i = 0; i < args.size(); i++ ){
-                // only one point possible
-                Point< value_t > other = args[i]->get_vertices()[0];
-                new_pt[ 0 ] += other[ 0 ];
-            }
-
-            vertices = { new_pt };
-            init_facets();
+        if ( args[0]->get_dimension() == 2 ){
+            multiple_minkowski_sum( args );
+            return;
         }
 
-        // else 2d
-        multiple_minkowski_sum( args );
+        // else 1d
+        Point< value_t > new_pt = { 0 };
+        for ( size_t i = 0; i < args.size(); i++ ){
+            // only one point possible
+            Point< value_t > other = args[i]->get_vertices()[0];
+            new_pt[ 0 ] += other[ 0 ];
+        }
+
+        vertices = { new_pt };
+        init_facets();
+
     }
 
     /* preconditions: all entries in args are correctly initalized, i.e.
@@ -208,6 +215,8 @@ public:
      * sets *this to minkowski sum of args
      */
     void multiple_minkowski_sum( const std::vector< const Polygon< value_t > * > &args ){
+
+
         std::vector< Point< value_t > > resulting_vertices;
 
         // indices into vertex array of each polygon 
@@ -230,7 +239,6 @@ public:
             return false;
         };
 
-
         while ( sum_unfinished() ){
             Point< value_t > next = { 0, 0 };
             for ( size_t i = 0; i < args.size(); i++ ){
@@ -251,6 +259,8 @@ public:
             for ( size_t i = 0; i < args.size(); i++ ){
 
                 if ( polygon_done( i ) ) { continue; }
+
+                // set to first unfinished polygon 
                 if ( next_idx == args.size() ) {
                     next_idx = i;
                     incremented_indices = { i };

@@ -3,6 +3,7 @@
 # include "models/env_wrapper.hpp"
 # include "models/mdp.hpp"
 # include "solvers/brtdp.hpp"
+# include "solvers/config.hpp"
 # include "utils/eigen_types.hpp"
 # include "parser.hpp"
 
@@ -26,12 +27,16 @@ void test_brtdp( const std::string &transition_file,
     // construct a wrapper object around the mdp ( initializes the object
     // bounds, and the solver uses it to interact with the model )
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap( &mdp );
+    ExplorationSettings< double > config;
+
+    config.discount_params = discount_params;
+    config.precision = precision;
 
     // construct the solver object using the wrapper and discount parameters
-    BRTDPSolver brtdp( std::move( env_wrap ), discount_params );
+    BRTDPSolver brtdp( std::move( env_wrap ), config );
 
     // solve up to given precision
-    auto start_bound = brtdp.solve( precision );
+    auto start_bound = brtdp.solve();
 
     // output the lower/upper bounds of the starting state
     std::cout << start_bound;
@@ -182,20 +187,25 @@ void test_brtdp_on_simple_mdp() {
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap( &mdp );
 
     // env, discount params and precision ( unused for now )
-    BRTDPSolver brtdp( std::move( env_wrap ) , { 0.75, 0.75 } );
-    Bounds< double > result = brtdp.solve( 1e-12 );
+    //
+    ExplorationSettings< double > config;
+    config.precision = 1e-12;
+    config.discount_params = { 0.75, 0.75 };
+
+    BRTDPSolver brtdp( std::move( env_wrap ) , config );
+    Bounds< double > result = brtdp.solve();
 
    assert( approx_set_equality( result.lower().get_vertices(), std::vector< std::vector< double > > ( { { 4.875, 2.875 }, { 1.75, 4 } } ) ) );
 
-    EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap2( &mdp );
-    BRTDPSolver brtdp2( std::move( env_wrap2 ) , { 0, 0 } );
-    result = brtdp2.solve( 1e-12 );
-
     assert( approx_set_equality( result.lower().get_vertices(), std::vector< std::vector< double > > ( { { 3, 1 } } ) ) );
     auto mdp2 = test2();
+
+    config.precision = 0.01;
+    config.discount_params = { 0.85, 0.85 };
+
     EnvironmentWrapper< size_t, size_t, std::vector<double>, double> env_wrap3( &mdp2 );
-    BRTDPSolver brtdp3( std::move( env_wrap3 ) , { 0.85, 0.85 } );
-    result = brtdp3.solve( 0.01 );
+    BRTDPSolver brtdp3( std::move( env_wrap3 ) , config );
+    result = brtdp3.solve();
 
     // short 1d test
     test_brtdp( "../tests/parser_files/model1.tra",  // transition file

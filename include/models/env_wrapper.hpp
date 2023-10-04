@@ -7,36 +7,35 @@
 #include "geometry/polygon.hpp"
 #include "geometry/pareto.hpp"
 #include "models/environment.hpp"
+#include "solvers/config.hpp"
 #include "utils/eigen_types.hpp"
 #include "utils/prng.hpp"
 
 
-/* tracks lower/upper bounds on the objective value */
+/* class used to store upper and lower bounds on the objective value
+ * for every state action pair. ( the over/under approximations of the pareto
+ * curve )
+ */
 template < typename value_t > 
 class Bounds{
 
-    size_t times_updated = 0;
     Polygon< value_t > lower_bound;
     Polygon< value_t > upper_bound;
 
 public:
 
-
     Bounds() : lower_bound(), upper_bound(){}
 
     Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
              const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
-                                                                       upper_bound( upper_pts ),
-                                                                       times_updated( 1 ){}
+                                                                       upper_bound( upper_pts ){}
     Bounds ( const Polygon< value_t > &lower, 
              const Polygon< value_t > &upper ) : lower_bound( lower ),
-                                                 upper_bound( upper ),
-                                                 times_updated( 1 ){}
+                                                 upper_bound( upper ){}
 
     Bounds ( Polygon< value_t > &&lower, 
              Polygon< value_t > &&upper ) : lower_bound( std::move( lower ) ),
-                                            upper_bound( std::move( upper ) ),
-                                            times_updated( 1 ){}
+                                            upper_bound( std::move( upper ) ){}
 
     Polygon< value_t > &lower() {
         return lower_bound; 
@@ -122,17 +121,12 @@ public:
     void pareto( const std::vector< value_t > &ref_point ) {
         lower_bound.pareto( ref_point );
         upper_bound.pareto( ref_point );
-        times_updated++;
     }
 
     // input conditions -> pareto operator has been ran on *this ( pareto call
     // preceded, omitting it here for performance reasons )
     value_t bound_distance(){
         return lower_bound.hausdorff_distance( upper_bound );
-    }
-
-    size_t update_count() const {
-        return times_updated;
     }
 
     friend std::ostream &operator<<( std::ostream& os, const Bounds< value_t > &b ) {
@@ -146,7 +140,12 @@ public:
 /* this class is used to interact with the underlying environment, recording
  * statistics, simulation, logging, etc.
  * reward_t to the actual reward type ( so std::vector< double > etc. )
- * while value_t will be equal to double / the templated argument of reward_t */
+ * while value_t will be equal to the type used to represent the reward
+ * components for the underlying reward, so for example double 
+ *
+ * templating the value/reward can be useful, since one possible
+ * extension could be using exact rational arithmetic instead of floating point
+ * arithmetic, and then the value_t templating could be helpful */
 
 template < typename state_t, typename action_t, typename reward_t , typename value_t >
 class EnvironmentWrapper{
@@ -155,8 +154,24 @@ class EnvironmentWrapper{
 
     Environment< state_t, action_t, reward_t > *env;
 
+
+    /* it is possible to provide more precise initial bounds
+     * before the interaction begins, see set config and solvers/config.hpp
+     *
+     * 
+     * if these are empty, maximum/minimum reward in each dimension will be
+     * fetched from the environment, using the reward_range() method and 
+     * the largest ( theoretically possible ) discounted reward will be used
+     *
+     * every state shares the same initial bound values, this could be expanded
+     * later ( initializing procedures, like the dijkstra sweep in brtdp / etc )
+     */
+    Point< value_t > init_low_bound;
+    Point< value_t > init_upp_bound;
+
     std::vector< value_t > discount_params;
 
+    /* track update count for every state */
     std::map< state_t, size_t > update_count;
     std::map< std::tuple< state_t, action_t >, bounds_ptr > state_action_bounds;
 
@@ -171,39 +186,52 @@ public:
 
     using Observation = typename Environment< state_t, action_t, reward_t > :: Observation;
 
+
     /* interaction with the underlying environment */
     state_t get_current_state() const {
         return env->get_current_state();
     }
 
+
     std::vector< action_t > get_actions() const {
         return env->get_actions( get_current_state() );
     }
+
 
     std::map< state_t, double > get_transition( state_t state, action_t action ) const {
         return env->get_transition( state, action );
     }
 
+
     std::vector< action_t > get_actions( state_t state ) const {
         return env->get_actions( state );
     }
+
 
     reward_t get_expected_reward( state_t s, action_t a ) {
         return env->get_reward( s, a );
     }
 
+
     reward_t get_expected_reward( state_t s, action_t a, state_t succ_s ) {
         return env->get_reward( s, a );
     }
+
 
     std::pair< reward_t, reward_t > reward_range() const {
         return env->reward_range();
     }
 
+
     void clear_records(){
         state_action_bounds.clear();
         update_count.clear();
     }
+
+    std::string name() const {
+        return env->name();
+    }
+
 
     Observation reset( unsigned seed=0, bool reset_records=true ) {
         if (reset_records) { clear_records(); }
@@ -221,20 +249,17 @@ public:
         return { next_state , reward, terminated };
     }
     
+
     /* returns min/max possible objective ( discounted sum ) value given the
      * min/max reward bounds 
      */
-    std::pair< std::vector< value_t >, std::vector< value_t > > min_max_discounted_reward() {
+    std::pair< std::vector< value_t >, std::vector< value_t > > min_max_discounted_reward() const {
 
         auto [ min, max ] = reward_range();
 
-
-        // ( 1-\lambda_0, 1-\lambda_1, ... ), TODO: change this to something
-        // more sensible, don't use c-style casts, but type traits?
         std::vector< value_t > discount_copy( discount_params );
         multiply( value_t( -1 ), discount_copy );
         add( value_t( 1 ), discount_copy );
-         
         
         divide( min, discount_copy );
         divide( max, discount_copy );
@@ -242,19 +267,30 @@ public:
         return std::make_pair( min, max );
     }
 
+    std::pair< std::vector< value_t >, std::vector< value_t > > get_initial_bound() const {
+        if ( init_low_bound.empty() )
+            return min_max_discounted_reward();
+        return std::make_pair( init_low_bound, init_upp_bound );
+    }
+
+
     /* initializes L_0(s, a), U_0(s, a) */
     void init_bound( state_t s, action_t a ) {
+    
+        auto [ init_low, init_upp ] = get_initial_bound();
 
-        auto [ lower_bound_pt, upper_bound_pt ] = min_max_discounted_reward();
-        Bounds< value_t > result ( { lower_bound_pt }, { upper_bound_pt } );
+        // the lowest possible objective value
+        auto [ ref_point, _ ] = min_max_discounted_reward();
 
-        // set facets correctly preemptively, since we need to compute distance
-        // with these bounds as well ( facets need to be set )
-        result.pareto( lower_bound_pt );
+        Bounds< value_t > result ( { init_low } , { init_upp } );
+
+        // use to set facets & downward closure w.r.t ref point
+        result.pareto( ref_point );
 
         auto idx = std::make_pair( s, a );
         state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( std::move( result ) );
     }
+
 
     /* function that discovers a given state and initializes states for all its
      * available actions, if it has not been discovered in previous simulations
@@ -264,7 +300,7 @@ public:
      * updated bound estimates over its execution vs how many total states the
      * MDP has
      */
-    void discover( state_t s ) {
+    void discover( const state_t &s ) {
         if ( update_count.find( s ) == update_count.end() ) {
             update_count[ s ] = 0;
             for ( const action_t & avail_action : get_actions( s ) ) {
@@ -273,9 +309,10 @@ public:
         }
     }
 
+
     /* if all transitions from given state ( under every action ) result in
      * staying in given state with probability 1, then the state is terminal */
-    bool is_terminal_state( state_t state ) const {
+    bool is_terminal_state( const state_t &state ) const {
         std::vector< action_t > avail_actions = get_actions( state );
         for ( action_t action : avail_actions ) {
 
@@ -292,6 +329,7 @@ public:
         
         return true;
     }
+
 
     // returns L_i(s), U_i(s)
     Bounds< value_t > get_state_bound( state_t s ) {
@@ -314,6 +352,7 @@ public:
         return result;
     }
 
+
     // returns L_i(s, a), U_i(s, a)
     Bounds< value_t > get_state_action_bound( state_t s, action_t a ) {
         discover( s );
@@ -321,12 +360,11 @@ public:
         return *state_action_bounds[ idx ];
     }
 
+
     const Bounds< value_t > &get_state_action_bound( state_t s, action_t a ) const{
         auto idx = std::make_pair( s, a );
         return *state_action_bounds[ idx ];
     }
-   
-
 
     void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
@@ -334,31 +372,34 @@ public:
        state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( bound );
     }
 
-    void set_discount_params( const std::vector< value_t > gammas ) {
-        discount_params = gammas;
+
+    void set_config( const ExplorationSettings< value_t > &config ){
+        discount_params = config.discount_params;
+        init_low_bound = config.lower_bound_init;
+        init_upp_bound = config.upper_bound_init;
     }
 
+    void write_exploration_logs( std::string filename, bool output_all_bounds ) const {
 
-    void write_statistics( bool write_all ){
-        std::cout << "States discovered: " << update_count.size() << "\n";
-        std::cout << "Total records, state action values: " << state_action_bounds.size() << "\n";
-        std::cout << "Total brtdp updates ran by state:\n";
+        std::ofstream out( filename + "-logs.txt" , std::ios_base::app );
 
+        out << "States discovered: " << update_count.size() << "\n";
+        out << "Total brtdp updates ran by state:\n";
         size_t total = 0;
         for ( const auto &[k, v] : update_count ) {
-            std::cout << "State: " << k << " updates ( state x action ): " <<  v << std::endl;
+            out << "State: " << k << " updates ( state x action ): " <<  v << std::endl;
             total += v;
         }
 
-        std::cout << " Total " << total << " state action updates.\n";
+        out << " Total " << total << " state action updates.\n";
 
-        if ( write_all ) {
-            std::ofstream str( "all_bounds.txt" );
+        if ( output_all_bounds ) {
+            std::ofstream bounds( filename + "-all_bounds.txt" );
             for ( const auto &[ k, v ] : state_action_bounds ){
-                str << "State: " << std::get< 0 > ( k ) << " action: " << std::get< 1 > ( k ) << ".\n";
-                str << *v << "\n\n\n";
+                bounds << "State: " << std::get< 0 > ( k ) << " action: " << std::get< 1 > ( k ) << ".\n";
+                bounds << *v << "\n\n\n";
             }
         }
-    }
 
+    }
 };

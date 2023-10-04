@@ -2,17 +2,9 @@
 #include <algorithm>
 #include <stack> 
 #include "models/env_wrapper.hpp"
+#include "solvers/config.hpp"
 #include "utils/eigen_types.hpp"
 #include "utils/prng.hpp"
-
-    
-enum class StateSelectionHeuristic { BRTDP, 
-                                     Uniform, 
-                                     Dynamics };
-
-enum class ActionSelectionHeuristic { Hypervolume, 
-                                      Pareto, 
-                                      Uniform };
 
 
 /* templated type value_t is the underlying type used to represent reward
@@ -23,38 +15,18 @@ template < typename state_t, typename action_t, typename value_t >
 class BRTDPSolver{
 
     using EnvironmentHandle = EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t >;
-
+    using ExplorationConfig = ExplorationSettings< value_t >;
     // implicitly starts from inital state s'
     using TrajectoryStack = std::stack< std::pair< action_t, state_t > >;
 
     // handle on given mdp model
     EnvironmentHandle env;
 
+    // config of the solver
+    ExplorationConfig config;
+
     // prng for selecting actions/successors
     PRNG gen;
-
-    // selected heuristics to guide the search
-    StateSelectionHeuristic state_heuristic = StateSelectionHeuristic::BRTDP;
-    ActionSelectionHeuristic action_heuristic = ActionSelectionHeuristic::Pareto;
-
-    // vector of gammas for each objective ( maximum of two objectives
-    // supported as of now )
-    std::vector< value_t > discount_params;
-
-
-    bool trace = false;
-    size_t max_iter = 2000;
-
-    // trajectory cutoff ( stop when difference of bounds on successor is < )
-    double delta_distance = 1e-12;
-
-    /* helper functions for uniform sampling of actions/states
-     * TODO: eliminate the need for uniform action, isntead utilize
-     * uniform_index
-     */
-    size_t uniform_index( const std::vector< size_t > &indices ) {
-        return indices[ gen.rand_int( 0, indices.size() ) ];
-    }
 
     /*
      * ACTION HEURISTICS 
@@ -76,7 +48,7 @@ class BRTDPSolver{
      * 2) select action uniformly from all actions that have >= 1 nondominated
      * vector in their upper bound across avail_actions 
      */
-    action_t pareto_action( state_t s, const std::vector< action_t > &avail_actions ) {
+    action_t pareto_action( const state_t &s, const std::vector< action_t > &avail_actions ) {
 
         using vertex_vec = typename std::vector< Point< value_t > >; 
 
@@ -115,6 +87,30 @@ class BRTDPSolver{
         return uniform_action( pareto_actions );
         
     }
+
+    action_t hypervolume_action( const state_t &s, const std::vector< action_t > &avail_actions ) {
+        auto [ ref_point , _ ] = env.min_max_discounted_reward();
+
+        std::vector< action_t > maximizing_actions;
+        value_t max_hypervolume( 0 );
+
+        for ( const action_t &act : avail_actions ) {
+            auto upper_bound_vertices = env.get_state_action_bound( s, act ).upper().get_vertices();
+            value_t hypervolume = ( hypervolume_indicator( upper_bound_vertices, ref_point ) );
+
+            if ( hypervolume > max_hypervolume ){
+                maximizing_actions = { act };
+            }
+
+            else if ( hypervolume == max_hypervolume ){
+                maximizing_actions.push_back( act );
+            }
+
+            max_hypervolume = std::max( hypervolume, max_hypervolume );
+        }
+
+        return uniform_action( maximizing_actions );
+    }
     /*
      * SUCCESSOR HEURISTICS 
      *
@@ -144,19 +140,21 @@ class BRTDPSolver{
     // picks action from avail actions based on specified heuristic
     action_t action_selection( state_t s, const std::vector< action_t > &avail_actions ) {
 
-        if ( action_heuristic == ActionSelectionHeuristic::Uniform ) {
-            return uniform_action( avail_actions );
+        if ( config.action_heuristic == ActionSelectionHeuristic::Pareto ) {
+            return pareto_action( s, avail_actions );
         }
-        
-        // only these two supported right now
-        return pareto_action( s, avail_actions );
 
+        if ( config.action_heuristic == ActionSelectionHeuristic::Hypervolume ){
+            return hypervolume_action( s, avail_actions );
+        }
+
+        return uniform_action( avail_actions );
     }
 
 
     state_t state_selection( const std::map< state_t, double > &transitions ) {
 
-        if ( state_heuristic == StateSelectionHeuristic::BRTDP ) {
+        if ( config.state_heuristic == StateSelectionHeuristic::BRTDP ) {
             return bound_difference_state_selection( transitions );
         }
 
@@ -195,30 +193,33 @@ class BRTDPSolver{
             trajectory.push( { action, state } );
 
             // if debug output is turned on, output details of trajectory
-            if ( trace )
+            /*
+            if ( config.trace )
                 std::cout << iter 
                           << " : Selected action " << action 
                           << " successor state " << state << "\n";
+            */
 
             /* check termination ( whether gamma^iter * max_value is < precision )
              * then we can safely stop the trajectory ( cut off the tail )
-             * TODO: is this the correct stopping condition? */
-            
+             */
+         
             // discount_copy = discount_params^(iter+1) * max_value
-            multiply( discount_copy, discount_params );
+            multiply( discount_copy, config.discount_params );
 
-            auto successor_bound = env.get_state_bound( state );
+            // if a limit on trajectory depth is set, check for termination
+            if ( ( config.max_trajectory != 0 ) && ( iter >= config.max_trajectory ) ){
+                break;
+            }
 
-            // if all components are < precision, terminate, but iff reached
-            // min iterations
+            // if all components are < precision, terminate
             bool terminated = true;
             for ( value_t val : discount_copy )  {
-               terminated &= val < precision; 
+               terminated &= std::abs( val ) < precision; 
             }
 
-            if ( ( terminated ) || ( successor_bound.bound_distance() < delta_distance ) ) { 
-                    break; 
-            }
+            if ( terminated )
+               break; 
             
             iter++;
 
@@ -233,20 +234,18 @@ class BRTDPSolver{
         std::map< state_t, double > transitions = env.get_transition( s, a );
         Bounds< value_t > result;
 
-        /*
-
         for ( const auto &[ succ, prob ] : transitions ) {
             Bounds< value_t > successor_bound = env.get_state_bound( succ );
             successor_bound.multiply_bounds( prob );
             result.sum_bound( successor_bound );
         }
 
-        result.multiply_bounds( discount_params );
+        result.multiply_bounds( config.discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
         auto [ ref_point, _ ] = env.min_max_discounted_reward();
         result.pareto( ref_point );
-        */
 
+        /*
         std::vector< Bounds< value_t > > successors;
 
         for ( const auto &[ succ, prob ] : transitions ) {
@@ -255,11 +254,10 @@ class BRTDPSolver{
         }
 
         result.sum_successors( successors );
-        result.multiply_bounds( discount_params );
+
+        result.multiply_bounds( config.discount_params );
         result.shift_bounds( env.get_expected_reward( s, a ) );
-
-
-
+        */
         env.set_bound( s, a, std::move( result ) );
     }
 
@@ -278,11 +276,16 @@ class BRTDPSolver{
 public:
 
     // need to move env since it has ownership of solver resources ( bounds )
-    BRTDPSolver( EnvironmentHandle &&_env, 
-                 const std::vector< value_t > discount_params ) :  
+    BRTDPSolver( EnvironmentHandle &&_env ) :  
                                         env( std::move( _env ) ),
                                         gen( ), 
-                                        discount_params( discount_params ) {  }
+                                        config( ) {  }
+
+    BRTDPSolver( EnvironmentHandle &&_env ,
+                 const ExplorationConfig &config) :  
+                                        env( std::move( _env ) ),
+                                        gen( ), 
+                                        config( config ) {  }
 
     /* the main BRTDP solver function, samples trajectories and updates bounds
      * until the distance of starting state bounds is less than specified
@@ -295,43 +298,63 @@ public:
         env = EnvironmentHandle( &new_env );
     }
 
-    Bounds< value_t > solve( value_t precision ) {
+
+    void set_config( const ExplorationConfig& _config ){
+        config = _config;
+    }
+
+
+    /* solves the loaded MDP, utilizing currently loaded config ( discount
+     * parameters, precision, etc. )
+     *
+     * logs are output to filename-logs.txt
+     * all bounds are output to filename-all_bounds.txt
+     * result pareto curve to filename-result.txt
+     */
+    Bounds< value_t > solve() {
+
+        std::ofstream logs( config.filename + "_brtdp-logs.txt" );
+        std::ofstream result( config.filename + "_brtdp-result.txt" );
 
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
 
-        env.set_discount_params( discount_params );
+        // pass config to handler
+        env.set_config( config );
         
-        /* get max ( theoretically ) possible value of the objective
-         * i.e infinite series W_max + \gamma * W_max + ... 
-         * where W_max is a vector of max rewards and \gamma discount_param
-         * vector
-         */
-        auto [ minimal_value , maximal_value ] = env.min_max_discounted_reward();
+        // get initial upper and lower bounds on objective
+        auto [ minimal_value , maximal_value ] = env.get_initial_bound();
+        Bounds< value_t > start_bound = env.get_state_bound( starting_state );
 
         size_t episode = 0;
 
-        while ( env.get_state_bound( starting_state ).bound_distance() >= precision ) {
-            std::cout << "episode #" << episode << "\n";
-            TrajectoryStack trajectory = sample_trajectory( maximal_value, precision );
-            update_along_trajectory( trajectory, starting_state );
-            std::cout << env.get_state_bound( starting_state );
-            episode++;
+        while ( start_bound.bound_distance() >= config.precision ) {
 
-            if ( episode > max_iter ) { break; }
+            TrajectoryStack trajectory = sample_trajectory( maximal_value, config.precision );
+            update_along_trajectory( trajectory, starting_state );
+
+            if ( config.trace ){
+                logs << "episode #" << episode << ":\n";
+                logs << "distance: " << start_bound.bound_distance() << ".\n";
+                logs << start_bound;
+
+                std::cout << "episode #" << episode << "\n.";
+                std::cout << start_bound;
+            }
+
+            start_bound = env.get_state_bound( starting_state );
+
+            episode++;
+            if ( episode >= config.max_episodes ) { break; }
         }
 
-        auto start_bound = env.get_state_bound( starting_state );
-
-        std::cout << "distance: " << start_bound.bound_distance( ) << std::endl;
-        auto vertices = start_bound.lower().get_vertices();
-
-        env.write_statistics( true );
-        std::sort( start_bound.lower().get_vertices().begin(), start_bound.lower().get_vertices().end() );
-        std::sort( start_bound.upper().get_vertices().begin(), start_bound.upper().get_vertices().end() );
-        start_bound.lower().write_to_file( "../out/starting_lower.txt" );
-        start_bound.upper().write_to_file( "../out/starting_upper.txt" );
+        
+        logs << "Total episodes: " << episode << ".\n";
+        logs << "Converged distance: " << start_bound.bound_distance() << ".\n";
+        logs << start_bound;
+        
+        env.write_exploration_logs( config.filename + "_brtdp" , true );
+        result << start_bound;
 
         return start_bound;
     }
-
 };
