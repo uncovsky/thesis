@@ -341,7 +341,7 @@ public:
 
     // more efficient + automatically remove dominated solutions
     // eps determines the granularity of the hull
-    void upper_right_hull( double eps=1e-4 ){
+    void upper_right_hull( double eps ){
         if ( vertices.empty() )
             return;
         if ( get_dimension() > 2 ) {
@@ -383,8 +383,8 @@ public:
         init_facets();
     }
 
-    void pareto( const Point< value_t >& ref_point ){
-        upper_right_hull();
+    void pareto( const Point< value_t >& ref_point, double prec ){
+        upper_right_hull( prec );
         downward_closure( ref_point );
     }
 

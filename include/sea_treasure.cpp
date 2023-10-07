@@ -9,11 +9,17 @@ void DeepSeaTreasure::initialize_state( Coordinates pos ) {
 
     initial_state = res;
     current_state = res;
+
+    TreasureState terminal;
+    terminal.position = Coordinates( -1, -1 );
+    terminal.treasure_collected = true;
+
+    terminal_state = terminal;
 }
 
 
 bool DeepSeaTreasure::terminated( const TreasureState& s ){
-    return s.treasure_collected;
+    return s == terminal_state;
 }
 
 
@@ -26,13 +32,13 @@ std::map< TreasureState, double > DeepSeaTreasure::get_transition( const Treasur
 
     // terminal state
     if ( s.treasure_collected ) {
-        return { std::make_pair( s, 1.0 ) };
+        return { std::make_pair( terminal_state, 1.0 ) };
     }
 
     std::vector< Direction > actions = get_actions( s );
     std::vector< TreasureState > successors;
-    for ( const auto &a : actions ) {
 
+    for ( const auto &a : actions ) {
         TreasureState copy(s);
         copy.position += dir_to_vec( a );
         if ( treasures.find( copy.position ) != treasures.end() ) {
@@ -54,6 +60,13 @@ std::map< TreasureState, double > DeepSeaTreasure::get_transition( const Treasur
         else if ( !approx_zero( noise_div ) ) { transition[ successors[i] ] = noise_div; }
     }
 
+    if ( s.treasure_collected  ){
+        std::cout << "COLLECTED" << s << "\n";
+        for ( const auto [succ, prob] : transition ) {
+            std::cout << "  " << succ << "  " << prob << std::endl;
+        }
+    }
+
     return transition;
 }
 
@@ -63,7 +76,7 @@ DeepSeaTreasure::reward_t DeepSeaTreasure::get_reward( const TreasureState &s, c
     double treasure = 0;
     auto transition = get_transition( s, dir );
 
-    if ( terminated( s ) ) {
+    if ( s.treasure_collected ) {
         return { 0, 0 };
     }
 
@@ -93,18 +106,24 @@ std::pair< DeepSeaTreasure::reward_t, DeepSeaTreasure::reward_t > DeepSeaTreasur
     std::vector< double > min_vec = { min_treasure, fuel_per_turn };
     std::vector< double > max_vec = { max_it->second, 0 };
 
-    // TODO: change later
-    min_vec = { 0, -1 };
-    max_vec = { 1, 0 };
-
     return std::make_pair( min_vec, max_vec );
 }
 
 
 std::vector< Direction > DeepSeaTreasure::get_actions( const TreasureState &s ) const  {
+
+    // just one action, transition to terminal state ( handled in get_transition() )
+    if ( s.treasure_collected ) {
+        return { Direction::UP };
+    }
+
     std::vector< Direction > result;
     for ( auto dir : { Direction::UP, Direction::DOWN, Direction::LEFT, Direction::RIGHT } ) {
 
+        //TODO: make this more sensible
+        if ( inacessible_squares.find( s.position + dir_to_vec( dir ) ) != inacessible_squares.end() ) {
+            continue;
+        }
         if ( !collides( s.position, dir, height, width ) ){
             result.push_back( dir );
         }
@@ -266,5 +285,9 @@ DeepSeaTreasure::DeepSeaTreasure( const DeepSeaTreasure &other ) {
     inacessible_squares = inaccess;
     current_state = current;
     initial_state = initial;
+
+    terminal_state = TreasureState();
+    terminal_state.position = Coordinates( -1, -1 );
+    terminal_state.treasure_collected = true;
 }
 

@@ -16,6 +16,7 @@ class CHVIExactSolver{
 
     std::set< state_t > reachable_states;
 
+    // bfs to find all reachable states
     void set_reachable_states() {
         std::queue< state_t > q;
         q.push( env.get_current_state() );
@@ -25,6 +26,8 @@ class CHVIExactSolver{
 
             state_t curr = q.front();
             q.pop();
+
+
         
             for ( const auto &act : env.get_actions( curr ) ) {
                 for ( const auto &[ succ, _ ] : env.get_transition( curr, act ) ) {
@@ -34,6 +37,22 @@ class CHVIExactSolver{
                     }
                 }
             }
+        }
+
+        if ( config.trace ){
+            std::cout << "CHVI - reachable states:\n";
+
+            for ( const auto& state : reachable_states ) {
+                std::cout << state << "\n";
+                for ( const auto act : env.get_actions( state ) ) {
+                    std::cout << "  Action " << act << ".\n";
+                    for ( const auto &[ succ, prob ] : env.get_transition( state, act ) ) {
+                        std::cout << "Successor: " << succ << " with p. " << prob << ".\n";
+                    }
+
+                }
+            }
+            std::cout << "Total reachable states: " << reachable_states.size() << ".\n";
         }
     }
 
@@ -74,6 +93,7 @@ public:
 
     Bounds< value_t > solve() {
 
+        auto start_time = std::chrono::steady_clock::now();
         std::ofstream logs( config.filename + "_chvi-logs.txt" );
         std::ofstream result( config.filename + "_chvi-result.txt" );
 
@@ -104,8 +124,12 @@ public:
         }
 
         auto start_bound = env.get_state_bound( starting_state );
-        logs << "Total sweeps" << sweeps << "\n";
-        logs << "Converged distance" << start_bound.bound_distance() << "\n";
+        auto finish_time = std::chrono::steady_clock::now();
+        std::chrono::duration< double > exec_time = finish_time - start_time;
+        logs << "\n\n\nTime elapsed: " << exec_time.count() << ".\n";
+        logs << "Total sweeps: " << sweeps << "\n";
+        logs << "Total updates: " << env.get_update_num() << "\n";
+        logs << "Converged distance: " << start_bound.bound_distance() << "\n";
         logs << start_bound;
 
         env.write_exploration_logs( config.filename + "_chvi", true );

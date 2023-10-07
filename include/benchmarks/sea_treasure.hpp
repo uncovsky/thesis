@@ -22,10 +22,11 @@ struct TreasureState {
     // agent position
     Coordinates position;
 
-
-    // whether any treasure has been collected
     bool treasure_collected;
 
+    bool operator== ( const TreasureState& other ) const {
+        return ( position == other.position ) && ( treasure_collected == other.treasure_collected );
+    }
 
     bool operator< ( const TreasureState& other ) const {
         return ( ( position < other.position ) ||
@@ -68,6 +69,7 @@ class DeepSeaTreasure : public Environment< TreasureState, Direction, std::vecto
     PRNG gen;
 
     TreasureState current_state, initial_state;
+    TreasureState terminal_state;
 
     std::map< Coordinates, double > treasures;
 

@@ -24,11 +24,18 @@ std::map< VehicleState, double > Racetrack::get_transition( const VehicleState &
 
     VehicleState succ( pos ), succ_slip( pos );
 
+    // transition with p=1 to terminal state if race is finished
+    if ( goal_states.find( pos.position ) != goal_states.end() || pos == terminal_state ) {
+        return { { terminal_state, 1.0 } };
+    }
+
     succ.add_velocity( action );
     succ.move();
     succ_slip.move();
 
     std::map< VehicleState, double > result;
+
+    // handle possible slips
     if ( vehicle_collides( succ ) ){
         result[ initial_state ] += 1 - slip_prob;
     }
@@ -49,38 +56,51 @@ std::map< VehicleState, double > Racetrack::get_transition( const VehicleState &
 Racetrack::reward_t Racetrack::get_reward( const VehicleState &pos,
                                            const std::pair< int, int > &action ) {
 
-    // if terminal state then don't lose fuel or time anymore
-    if ( goal_states.find( pos.position ) != goal_states.end() ){
+    // if terminal state / moving to terminal state, don't lose fuel anymore
+    if ( ( goal_states.find( pos.position ) != goal_states.end() ) || ( pos == terminal_state ) ){
         return { 0, 0 };
     }
+
     // return -1 * sum of velocities as fuel reward and -1 time rew
     double velocity_val = std::abs( pos.velocity.first + action.first ) + std::abs( pos.velocity.second + action.second );
-    // todo replace
-    return { -1 * velocity_val, -1 };
+
+    // always lose at least one fuel and time
+    return { -1 * velocity_val - 1, -1 };
 }
 
 std::pair< Racetrack::reward_t, Racetrack::reward_t > Racetrack::reward_range() const {
     std::vector< double > min_rew, max_rew;
 
-    // TODO: this is technically incorrect, but initialization has to be
-    // smarter for large reachability problems
-    min_rew = { -2, -2 };
-    max_rew = { -1, 0 };
+    // can lose at most 11 fuel per turn
+    min_rew = { -11, -1 };
+
+    // after terminating race get max reward ( 0 in both comps )
+    max_rew = { 0, 0 };
 
     return std::make_pair( min_rew, max_rew );
 }
 
 std::vector< Racetrack::action_t > Racetrack::get_actions( const VehicleState& pos ) const {
     
-    // make all states with goal position terminal w. selfloop
+    // make all goal states transition to end with placeholder action
     if ( goal_states.find( pos.position ) != goal_states.end() ){
         return { { 0, 0 } };
     }
+
+    // terminal state just self loops
+    if ( pos == terminal_state ){
+        return { { 0, 0 } };
+    }
+
     std::vector< action_t > res;
 
     for ( int delta_x : { -1, 0, 1 } ) {
         for ( int delta_y : { -1, 0, 1 } ) {
-            res.emplace_back( delta_x, delta_y );
+            auto [ x, y ] = pos.velocity;
+
+            // speed cannot exceed 5 in either component
+            if ( ( std::abs( x + delta_x ) <= 5 ) && ( std::abs( y + delta_y ) <= 5 ) )
+                res.emplace_back( delta_x, delta_y );
         }
     }
 
@@ -190,6 +210,7 @@ void Racetrack::from_file( const std::string &filename ){
 
 Racetrack::Racetrack() : current_state()
                        , initial_state()
+                       , terminal_state( Coordinates( -1, -1 ), { 0, 0 } )
                        , height( 1 )
                        , width( 4 )
                        , collision_states()

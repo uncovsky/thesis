@@ -58,11 +58,6 @@ public:
         remove_dominated_alt( upper_bound.get_vertices() );
     }
 
-    void remove_eps_close( value_t eps ){
-        lower_bound.remove_eps_close( eps );
-        upper_bound.remove_eps_close( eps );
-    }
-
     void convex_hull() {
         lower_bound.convex_hull();
         upper_bound.convex_hull();
@@ -118,9 +113,9 @@ public:
     
     // reference point is the min of all objectives ( theoretical lowest
     // possible value in objective space dominated by all other points )
-    void pareto( const std::vector< value_t > &ref_point ) {
-        lower_bound.pareto( ref_point );
-        upper_bound.pareto( ref_point );
+    void pareto( const std::vector< value_t > &ref_point, double prec=1e-4 ) {
+        lower_bound.pareto( ref_point, prec );
+        upper_bound.pareto( ref_point, prec );
     }
 
     // input conditions -> pareto operator has been ran on *this ( pareto call
@@ -169,7 +164,16 @@ class EnvironmentWrapper{
     Point< value_t > init_low_bound;
     Point< value_t > init_upp_bound;
 
+    /* specific bounds for terminal state */
+    Point< value_t > init_low_bound_term;
+    Point< value_t > init_upp_bound_term;
+
     std::vector< value_t > discount_params;
+
+    /* precision used to build the hull, the larger 
+     * the more points get filtered out during the building of the hull 
+     */
+    double hull_precision;
 
     /* track update count for every state */
     std::map< state_t, size_t > update_count;
@@ -275,17 +279,19 @@ public:
 
 
     /* initializes L_0(s, a), U_0(s, a) */
-    void init_bound( state_t s, action_t a ) {
+    void init_bound( const state_t &s, const action_t &a ) {
     
         auto [ init_low, init_upp ] = get_initial_bound();
-
         // the lowest possible objective value
         auto [ ref_point, _ ] = min_max_discounted_reward();
 
         Bounds< value_t > result ( { init_low } , { init_upp } );
 
+        if ( is_terminal_state( s ) && !init_low_bound_term.empty() )
+            result = Bounds< value_t >( { init_low_bound_term } , { init_upp_bound_term } );
+
         // use to set facets & downward closure w.r.t ref point
-        result.pareto( ref_point );
+        result.pareto( ref_point, hull_precision );
 
         auto idx = std::make_pair( s, a );
         state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( std::move( result ) );
@@ -320,7 +326,7 @@ public:
 
             if ( 
                  ( transitions.size() > 1 ) || 
-                 ( !approx_equal( transitions[state], 1.0 ) )
+                 ( !approx_equal( transitions[ state ], 1.0 ) )
                )
                  {
                     return false;
@@ -338,7 +344,7 @@ public:
 
         Bounds< value_t > result;
         for ( const action_t &action : avail_actions ) {
-            Bounds<value_t> action_bound = get_state_action_bound( s, action );
+            Bounds< value_t > action_bound = get_state_action_bound( s, action );
             result.merge_bound( action_bound );
         }
 
@@ -347,7 +353,7 @@ public:
 
         // set facets and eliminate convex dominated points
         auto [ ref_point, _ ] = min_max_discounted_reward();
-        result.pareto( ref_point );
+        result.pareto( ref_point, hull_precision );
 
         return result;
     }
@@ -375,8 +381,22 @@ public:
 
     void set_config( const ExplorationSettings< value_t > &config ){
         discount_params = config.discount_params;
+        hull_precision = config.precision / 100;
         init_low_bound = config.lower_bound_init;
         init_upp_bound = config.upper_bound_init;
+        init_low_bound_term = config.lower_bound_init_term;
+        init_upp_bound_term = config.upper_bound_init_term;
+    }
+
+    size_t get_update_num() const {
+
+        size_t total = 0;
+
+        for ( const auto &[k, v] : update_count ) {
+            total += v;
+        }
+
+        return total;
     }
 
     void write_exploration_logs( std::string filename, bool output_all_bounds ) const {

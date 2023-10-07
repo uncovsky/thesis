@@ -23,7 +23,7 @@ void test_minkowski_sum(){
     res.minkowski_sum( { &poly, &poly2 } );
 
     poly.minkowski_sum( poly2 );
-    poly.upper_right_hull();
+    poly.upper_right_hull( 0.0 );
 
     std::cout << res.to_string();
     std::cout << poly.to_string();
