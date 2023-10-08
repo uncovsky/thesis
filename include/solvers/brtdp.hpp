@@ -55,14 +55,17 @@ class BRTDPSolver{
             bounds.push_back( vertices );
 
             
-
+            
+            /*
+            std::cout << "Action: " << a << "\n";
             for ( auto pt : bounds.back() ){
                 for ( auto dim : pt ) {
                     std::cout << dim << " ";
                 }
 
-                std::cout << "\n";
+                std::cout << "\n\n";
            }
+           */
         }
 
         vertex_vec nondominated = env.get_state_bound( s ).upper().get_vertices();
@@ -82,6 +85,7 @@ class BRTDPSolver{
             }
         }
 
+        /*
         std::cout << "\n" << s << "\n\nNondominated:\n";
         
         for ( const auto &pt : nondominated ) {
@@ -97,6 +101,9 @@ class BRTDPSolver{
             std::cout << a << " ";
         }
 
+        std::cout << std::endl;
+        */
+
         // choose uniformly from these actions
         return gen.sample_uniformly( pareto_actions );
         
@@ -110,7 +117,20 @@ class BRTDPSolver{
 
         for ( const action_t &act : avail_actions ) {
             auto upper_bound_vertices = env.get_state_action_bound( s, act ).upper().get_vertices();
-            value_t hypervolume = ( hypervolume_indicator( upper_bound_vertices, ref_point ) );
+            value_t hypervolume = hypervolume_indicator( upper_bound_vertices, ref_point );
+
+
+            /*
+            std::cout << "  Action: " << act << "\n";
+            for ( auto pt : upper_bound_vertices ) {
+                for ( auto dim : pt ) {
+                    std::cout << "      " << dim << ", ";
+                }
+                std::cout << "\n";
+            }
+
+            std::cout << "HV: " << hypervolume << "\n";
+            */
 
             if ( hypervolume > max_hypervolume ){
                 maximizing_actions = { act };
@@ -122,6 +142,16 @@ class BRTDPSolver{
 
             max_hypervolume = std::max( hypervolume, max_hypervolume );
         }
+
+
+        /*
+        std::cout << "Max HV:" << max_hypervolume << "\n";
+        for ( const auto actx : maximizing_actions ) {
+            std::cout << actx << " ";
+        }
+
+        std::cout << std::endl << std::endl;
+        */
 
         return gen.sample_uniformly( maximizing_actions );
     }
@@ -230,6 +260,8 @@ class BRTDPSolver{
                 for ( const auto &[ succ, prob ] : transitions ) {
                     out << "        " << succ << " with p. " << prob << ".\n";
                 }
+
+                out << "\n\n";
             }
 
             /* check termination ( whether gamma^iter * max_value is < precision )

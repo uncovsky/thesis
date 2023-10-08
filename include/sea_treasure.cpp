@@ -236,8 +236,8 @@ void DeepSeaTreasure::from_file( const std::string &filename ) {
             idx++;
         }
 
-        if ( h == 0 ) { w = idx + 1; }
-        else if ( idx + 1 != w ) {
+        if ( h == 0 ) { w = idx; }
+        else if ( idx != w ) {
             throw std::runtime_error( "invalid line width in " + filename );
         }
         h++;

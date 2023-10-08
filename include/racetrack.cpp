@@ -65,7 +65,7 @@ Racetrack::reward_t Racetrack::get_reward( const VehicleState &pos,
     double velocity_val = std::abs( pos.velocity.first + action.first ) + std::abs( pos.velocity.second + action.second );
 
     // always lose at least one fuel and time
-    return { -1 * velocity_val - 1, -1 };
+    return { -1 * std::pow( velocity_val, 2 ) - 1, -1 };
 }
 
 std::pair< Racetrack::reward_t, Racetrack::reward_t > Racetrack::reward_range() const {

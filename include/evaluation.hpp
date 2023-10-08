@@ -33,12 +33,12 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
 void eval_racetrack(){
     
     ExplorationSettings< double > config;
-    config.min_trajectory = 1000;
+    config.min_trajectory = 100;
     config.max_trajectory = 5000;
-    config.max_episodes = 1;
+    config.max_episodes = 10000;
     config.discount_params = { 1, 1 };
     config.trace = true;
-    config.precision = 0.1;
+    config.precision = 1.0;
     config.filename = "racetrack_easy";
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
@@ -49,6 +49,11 @@ void eval_racetrack(){
     Racetrack easy;
     easy.from_file("../benchmarks/race_easy.track");
     run_benchmark( &easy, config );
+
+    easy.from_file("../benchmarks/barto-small.track");
+    // run_benchmark( &easy, config );
+
+
 }
 
 
@@ -56,8 +61,9 @@ void eval_treasure(){
 
     ExplorationSettings< double > config;
     config.min_trajectory = 100;
+    config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.max_trajectory = 5000;
-    config.max_episodes = 1000;
+    config.max_episodes = 10000;
     config.discount_params = { 0.99, 0.99 };
     config.trace = true;
     config.precision = 0.1;
@@ -66,7 +72,7 @@ void eval_treasure(){
     // at least no treasure and <100 fuel spent
     config.lower_bound_init = { 0, -100 };
     // at most this amount of treasure and <0 fuel lost
-    config.upper_bound_init = { 150, 0 };
+    config.upper_bound_init = { 125, 0 };
 
     config.lower_bound_init_term = { 0, 0 };
     config.upper_bound_init_term = { 0, 0 };
@@ -84,12 +90,15 @@ void eval_frozenlake() {
     ExplorationSettings< double > config;
     config.min_trajectory = 1000;
     config.max_trajectory = 5000;
-    config.max_episodes = 100;
-
+    config.max_episodes = 1000;
     config.discount_params = { 0.95, 0.95 };
-    config.trace = false;
+    config.trace = true;
     config.precision = 0.1;
     config.filename = "easy_lake";
+    config.lower_bound_init = { 0, -4 };
+    config.upper_bound_init = { 1, 0 };
+    config.lower_bound_init_term = { 0, 0 };
+    config.upper_bound_init_term = { 0, 0 };
 
     FrozenLake lake;
 
@@ -97,9 +106,7 @@ void eval_frozenlake() {
 }
 
 void evaluate_benchmarks() {
-    eval_treasure();
-    /*
-    eval_frozenlake();
     eval_racetrack();
-    */
+    eval_treasure();
+    eval_frozenlake();
 }

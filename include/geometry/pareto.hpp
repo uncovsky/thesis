@@ -127,7 +127,7 @@ bool dominates_set( const Point< value_t > &point,
  */
 template< typename value_t >
 value_t hypervolume_indicator( const std::vector< Point< value_t > > &vertices,
-        const Point< value_t > &ref_point ) {
+                               const Point< value_t > &ref_point ) {
     if ( ref_point.size() > 2 ){
         throw std::runtime_error("Only 1D/2D hypervolume supported.");
     }
@@ -140,7 +140,7 @@ value_t hypervolume_indicator( const std::vector< Point< value_t > > &vertices,
 
     // calculate disjoint areas
     for ( const auto &pt : vertices ) {
-        res += ( pt[0] - copy[0] ) * ( pt[1] - copy[1] );
+        res += std::abs( pt[0] - copy[0] ) * std::abs( pt[1] - copy[1] );
         copy = pt;
     }
 
