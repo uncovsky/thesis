@@ -30,16 +30,19 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
 }
 
 
-void eval_racetrack(){
+void eval_racetrack( const std::string &dir ){
     
     ExplorationSettings< double > config;
+
+    config.action_heuristic = ActionSelectionHeuristic::Pareto;
+    config.state_heuristic = StateSelectionHeuristic::BRTDP;
     config.min_trajectory = 100;
     config.max_trajectory = 5000;
     config.max_episodes = 10000;
     config.discount_params = { 1, 1 };
-    config.trace = true;
+    config.trace = false;
     config.precision = 1.0;
-    config.filename = "racetrack_easy";
+    config.filename = dir + "racetrack_easy";
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
     config.lower_bound_init_term = { 0, 0 };
@@ -50,24 +53,28 @@ void eval_racetrack(){
     easy.from_file("../benchmarks/race_easy.track");
     run_benchmark( &easy, config );
 
-    easy.from_file("../benchmarks/barto-small.track");
-    // run_benchmark( &easy, config );
+    config.lower_bound_init = { -1000, -1000 };
+    config.upper_bound_init = { -10, -10 };
+    config.lower_bound_init_term = { 0, 0 };
+    config.upper_bound_init_term = { 0, 0 };
 
+    config.filename = dir + "ring_easy";
+    easy.from_file("../benchmarks/ring_easy.track");
+    run_benchmark( &easy, config );
 
 }
 
 
-void eval_treasure(){
+void eval_treasure( const std::string &dir="" ){
 
     ExplorationSettings< double > config;
     config.min_trajectory = 100;
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.max_trajectory = 5000;
     config.max_episodes = 10000;
-    config.discount_params = { 0.99, 0.99 };
-    config.trace = true;
+    config.discount_params = { 0.95, 0.95 };
+    config.trace = false;
     config.precision = 0.1;
-    config.filename = "treasure_concave";
 
     // at least no treasure and <100 fuel spent
     config.lower_bound_init = { 0, -100 };
@@ -81,21 +88,22 @@ void eval_treasure(){
     dst.from_file( "../benchmarks/sea_treasure1.txt" );
     dst_convex.from_file( "../benchmarks/sea_treasure_convex.txt" );
 
+    config.filename = dir + "treasure_concave";
     run_benchmark( &dst, config );
-    config.filename = "treasure_convex";
+    config.filename = dir + "treasure_convex";
     run_benchmark( &dst_convex, config );
 }
 
-void eval_frozenlake() {
+void eval_frozenlake( const std::string &dir ) {
     ExplorationSettings< double > config;
-    config.min_trajectory = 1000;
+    config.min_trajectory = 100;
     config.max_trajectory = 5000;
-    config.max_episodes = 1000;
+    config.max_episodes = 10000;
     config.discount_params = { 0.95, 0.95 };
-    config.trace = true;
+    config.trace = false;
     config.precision = 0.1;
-    config.filename = "easy_lake";
-    config.lower_bound_init = { 0, -4 };
+    config.filename = dir + "easy_lake";
+    config.lower_bound_init = { 0, -3 };
     config.upper_bound_init = { 1, 0 };
     config.lower_bound_init_term = { 0, 0 };
     config.upper_bound_init_term = { 0, 0 };
@@ -103,10 +111,26 @@ void eval_frozenlake() {
     FrozenLake lake;
 
     run_benchmark( &lake, config );
+
+    PRNG gen;
+    std::set< Coordinates > randpits;
+    for ( int i = 0; i < 25; ++i ) {
+       randpits.insert( Coordinates( gen.rand_int( 1, 25), gen.rand_int( 1, 25 ) ) );
+    }
+
+    for ( auto &x : randpits ) {
+        std::cout << x << "\n";
+    }
+
+
+    config.discount_params = { 0.99, 0.99 };
+    FrozenLake lake2( 30, 30, randpits, 0.3 );
+    config.filename = dir + "hard_lake";
+    run_benchmark( &lake2, config );
 }
 
-void evaluate_benchmarks() {
-    eval_racetrack();
-    eval_treasure();
-    eval_frozenlake();
+void evaluate_benchmarks( const std::string &dir="") {
+    eval_racetrack( dir );
+    eval_treasure( dir );
+    eval_frozenlake( dir );
 }

@@ -110,17 +110,17 @@ class BRTDPSolver{
     }
 
     action_t hypervolume_action( const state_t &s, const std::vector< action_t > &avail_actions ) {
-        auto [ ref_point , _ ] = env.min_max_discounted_reward();
+        auto [ ref_point , _ ] = env.get_initial_bound();
 
-        std::vector< action_t > maximizing_actions;
-        value_t max_hypervolume( 0 );
+        std::vector< value_t > hypervolumes;
+        value_t total_hypervolume( 0 );
 
         for ( const action_t &act : avail_actions ) {
             auto upper_bound_vertices = env.get_state_action_bound( s, act ).upper().get_vertices();
-            value_t hypervolume = hypervolume_indicator( upper_bound_vertices, ref_point );
-
+            hypervolumes.push_back( hypervolume_indicator( upper_bound_vertices, ref_point ) );
 
             /*
+
             std::cout << "  Action: " << act << "\n";
             for ( auto pt : upper_bound_vertices ) {
                 for ( auto dim : pt ) {
@@ -129,31 +129,21 @@ class BRTDPSolver{
                 std::cout << "\n";
             }
 
-            std::cout << "HV: " << hypervolume << "\n";
+            std::cout << "HV: " << hypervolumes.back() << "\n";
+
             */
 
-            if ( hypervolume > max_hypervolume ){
-                maximizing_actions = { act };
-            }
-
-            else if ( hypervolume == max_hypervolume ){
-                maximizing_actions.push_back( act );
-            }
-
-            max_hypervolume = std::max( hypervolume, max_hypervolume );
+            total_hypervolume += hypervolumes.back();
         }
 
+        std::map< action_t, value_t > hv_distribution;
 
-        /*
-        std::cout << "Max HV:" << max_hypervolume << "\n";
-        for ( const auto actx : maximizing_actions ) {
-            std::cout << actx << " ";
+        size_t i = 0;
+        for ( const action_t &act : avail_actions ) {
+            hv_distribution[act] = ( total_hypervolume == 0 ) ? 1.0 / hypervolumes.size() : hypervolumes[i++] / total_hypervolume;
         }
 
-        std::cout << std::endl << std::endl;
-        */
-
-        return gen.sample_uniformly( maximizing_actions );
+        return gen.sample_distribution( hv_distribution );
     }
     /*
      * SUCCESSOR HEURISTICS 
@@ -274,7 +264,7 @@ class BRTDPSolver{
 
             // TODO: change breaks to terminated logical ops
             // if current state sufficiently close, terminate
-            if ( env.get_state_bound( state ).bound_distance() <= config.precision / 2 ) {
+            if ( env.get_state_bound( state ).bound_distance() <= config.precision / env.get_actions( state ).size()  ) {
                 break;
             }
 

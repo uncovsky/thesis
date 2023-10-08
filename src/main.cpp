@@ -16,5 +16,5 @@
 
 
 int main() {
-    evaluate_benchmarks();
+    evaluate_benchmarks("../out/2_");
 }
