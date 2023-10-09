@@ -22,6 +22,9 @@ class Bounds{
     Polygon< value_t > lower_bound;
     Polygon< value_t > upper_bound;
 
+    bool distance_valid = false;
+    value_t distance = 0;
+
 public:
 
     Bounds() : lower_bound(), upper_bound(){}
@@ -116,12 +119,22 @@ public:
     void pareto( const std::vector< value_t > &ref_point, double prec=1e-4 ) {
         lower_bound.pareto( ref_point, prec );
         upper_bound.pareto( ref_point, prec );
+
+        // invalidate distance here since pareto is always called before saving
+        // a bound
+        distance_valid = false;
     }
 
     // input conditions -> pareto operator has been ran on *this ( pareto call
     // preceded, omitting it here for performance reasons )
     value_t bound_distance(){
-        return lower_bound.hausdorff_distance( upper_bound );
+
+        if ( !distance_valid ) {
+            distance = lower_bound.hausdorff_distance( upper_bound );
+            distance_valid = true;
+        }
+
+        return distance;
     }
 
     friend std::ostream &operator<<( std::ostream& os, const Bounds< value_t > &b ) {
@@ -178,6 +191,7 @@ class EnvironmentWrapper{
     /* track update count for every state */
     std::map< state_t, size_t > update_count;
     std::map< std::tuple< state_t, action_t >, bounds_ptr > state_action_bounds;
+    std::map< state_t, bounds_ptr > state_bounds;
 
 public:
 
@@ -309,9 +323,12 @@ public:
     void discover( const state_t &s ) {
         if ( update_count.find( s ) == update_count.end() ) {
             update_count[ s ] = 0;
+
+            // set state action and state bound
             for ( const action_t & avail_action : get_actions( s ) ) {
                 init_bound( s, avail_action );
             }
+            update_state_bound( s );
         }
     }
 
@@ -338,7 +355,16 @@ public:
 
 
     // returns L_i(s), U_i(s)
-    Bounds< value_t > get_state_bound( state_t s ) {
+    Bounds< value_t > get_state_bound( const state_t &s ) {
+        if ( update_count.find( s ) == update_count.end() ) {
+            update_state_bound( s );
+        }
+
+        return *state_bounds[ s ];
+    }
+
+    void update_state_bound( const state_t &s ) {
+
         discover( s );
         std::vector< action_t > avail_actions = get_actions( s );
 
@@ -348,36 +374,37 @@ public:
             result.merge_bound( action_bound );
         }
 
-        // remove dominated elements from result
-        // result.nondominated();
-
-        // set facets and eliminate convex dominated points
         auto [ ref_point, _ ] = min_max_discounted_reward();
         result.pareto( ref_point, hull_precision );
 
-        return result;
+        set_bound( s, std::move( result ) );
     }
 
-
     // returns L_i(s, a), U_i(s, a)
-    Bounds< value_t > get_state_action_bound( state_t s, action_t a ) {
+    Bounds< value_t > get_state_action_bound( const state_t &s, const action_t &a ) {
         discover( s );
         auto idx = std::make_pair( s, a );
         return *state_action_bounds[ idx ];
     }
 
 
-    const Bounds< value_t > &get_state_action_bound( state_t s, action_t a ) const{
+    const Bounds< value_t > &get_state_action_bound( const state_t &s, const action_t &a ) const{
         auto idx = std::make_pair( s, a );
         return *state_action_bounds[ idx ];
     }
 
-    void set_bound( state_t s, action_t a, Bounds< value_t > &&bound ) {
+
+    // set state x action bound
+
+    void set_bound( const state_t &s, const action_t &a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
        update_count[ s ]++;
-       state_action_bounds[idx] = std::make_unique< Bounds< value_t > > ( bound );
+       state_action_bounds[ idx ] = std::make_unique< Bounds< value_t > > ( bound );
     }
 
+    void set_bound( const state_t &s, Bounds< value_t > &&bound ) {
+        state_bounds[ s ] = std::make_unique< Bounds< value_t > > ( bound );
+    }
 
     void set_config( const ExplorationSettings< value_t > &config ){
         discount_params = config.discount_params;

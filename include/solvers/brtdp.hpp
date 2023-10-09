@@ -171,7 +171,6 @@ class BRTDPSolver{
         std::vector< value_t > diff_values = get_successor_diffs( transitions );
         value_t diff_sum = std::accumulate( diff_values.begin(), diff_values.end(), 0 );
 
-
         std::map< state_t, value_t > diff_distribution;
         size_t succ_count = transitions.size();
 
@@ -323,6 +322,7 @@ class BRTDPSolver{
         result.shift_bounds( env.get_expected_reward( s, a ) );
         */
         env.set_bound( s, a, std::move( result ) );
+        env.update_state_bound( s );
     }
 
     /* executes BRTDP updates for the whole sampled trajectory */

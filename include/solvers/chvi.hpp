@@ -117,6 +117,8 @@ public:
                 for ( const action_t &act : env.get_actions( s ) ) {
                     update_bounds( s, act );
                 }
+
+                env.update_state_bound( s );
             }
 
             sweeps++;

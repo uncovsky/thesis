@@ -53,15 +53,17 @@ void eval_racetrack( const std::string &dir ){
     easy.from_file("../benchmarks/race_easy.track");
     run_benchmark( &easy, config );
 
+
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { -10, -10 };
-    config.lower_bound_init_term = { 0, 0 };
-    config.upper_bound_init_term = { 0, 0 };
+    easy.from_file("../benchmarks/barto-small.track");
+    run_benchmark( &easy, config );
 
+    config.lower_bound_init = { -1000, -1000 };
+    config.upper_bound_init = { 0, 0 };
     config.filename = dir + "ring_easy";
     easy.from_file("../benchmarks/ring_easy.track");
     run_benchmark( &easy, config );
-
 }
 
 
@@ -81,8 +83,10 @@ void eval_treasure( const std::string &dir="" ){
     // at most this amount of treasure and <0 fuel lost
     config.upper_bound_init = { 125, 0 };
 
+    /*
     config.lower_bound_init_term = { 0, 0 };
     config.upper_bound_init_term = { 0, 0 };
+    */
 
     DeepSeaTreasure dst, dst_convex;
     dst.from_file( "../benchmarks/sea_treasure1.txt" );
