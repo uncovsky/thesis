@@ -128,6 +128,7 @@ public:
         auto start_bound = env.get_state_bound( starting_state );
         auto finish_time = std::chrono::steady_clock::now();
         std::chrono::duration< double > exec_time = finish_time - start_time;
+        logs << "Reachable states:" << reachable_states.size() << ".\n";
         logs << "\n\n\nTime elapsed: " << exec_time.count() << ".\n";
         logs << "Total sweeps: " << sweeps << "\n";
         logs << "Total updates: " << env.get_update_num() << "\n";
