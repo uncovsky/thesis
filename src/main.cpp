@@ -16,7 +16,5 @@
 
 
 int main() {
-    for ( int i = 2; i <= 5; i++ ){
-        evaluate_benchmarks("../out/" + std::to_string(i) + "_");
-    }
+  evaluate_benchmarks("../out/");
 }

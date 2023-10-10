@@ -156,8 +156,5 @@ void eval_frozenlake( const std::string &dir ) {
 void evaluate_benchmarks( const std::string &dir="") {
     eval_treasure( dir );
     eval_racetrack( dir );
-    /*
     eval_frozenlake( dir );
-    
-    */
 }
