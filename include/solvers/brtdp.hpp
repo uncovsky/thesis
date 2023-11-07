@@ -303,7 +303,12 @@ class BRTDPSolver{
         }
 
         result.multiply_bounds( config.discount_params );
-        result.shift_bounds( env.get_expected_reward( s, a ) );
+        auto rew = env.get_expected_reward( s, a );
+        /*
+        rew[0] *= -1;
+        rew[1] *= -1;
+        */
+        result.shift_bounds( rew );
         auto [ ref_point, _ ] = env.min_max_discounted_reward();
 
         result.pareto( ref_point, config.precision / 100 );

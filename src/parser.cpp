@@ -321,6 +321,7 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
         transitions.emplace_back( transition_info[i].build_matrix() );
     }
 
+    std::cout << "Transition matrix built.\n";
 
     Matrix3D< double > rewards;
     std::pair< std::vector< double >, std::vector< double > > bounds;
@@ -341,6 +342,7 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
     }
     
     for ( size_t i = 0; i < reward_info.size(); i++ ) {
+        std::cout << "Building reward structure " << i << ".\n";
         rewards.emplace_back( reward_info[i].build_matrix() );
 
         auto [ min, max ] = reward_info[i].get_min_max_value();
@@ -348,11 +350,15 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
 
         min_vec.push_back( min );
         max_vec.push_back( max );
+
+        std::cout << "Reward structure " << i << " matrix built.\n";
     }
 
     if ( translate_indices ) {
         initial_state = translate( std::to_string( initial_state ), true );
     }
+
+    std::cout << "MDP successfuly built.\n";
 
     return MDP< double >( std::move( transitions )
                         , std::move( rewards )

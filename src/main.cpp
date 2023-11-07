@@ -16,5 +16,6 @@
 
 
 int main() {
-  evaluate_benchmarks("../out/");
+    eval_uav( "../out/" );
+  //evaluate_benchmarks("../out/");
 }

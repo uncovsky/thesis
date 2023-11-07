@@ -9,6 +9,8 @@
 #include "solvers/brtdp.hpp"
 #include "solvers/chvi.hpp"
 
+#include "parser.hpp"
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -26,10 +28,35 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     CHVIExactSolver chvi( std::move( chvi_envw ), config );
 
     brtdp.solve();
-    chvi.solve();
+//    chvi.solve();
 
 }
 
+void eval_uav( const std::string &dir ){
+  PrismParser parser;
+  auto MDP = parser.parse_model( "../benchmarks/uav/out.tra",
+                      {
+                      "../benchmarks/uav/out1.trew",
+                      "../benchmarks/uav/out2.trew"
+                      },
+                      0 );
+
+    ExplorationSettings< double > config;
+
+    config.action_heuristic = ActionSelectionHeuristic::Pareto;
+    config.state_heuristic = StateSelectionHeuristic::BRTDP;
+    config.min_trajectory = 100;
+    config.max_trajectory = 5000;
+    config.filename = dir + "uav";
+    config.max_episodes = 100000;
+    config.discount_params = { 1, 1 };
+    config.trace = false;
+    config.precision = 1e-5;
+    config.lower_bound_init = { -20, -20 };
+    config.upper_bound_init = { 0, 0 };
+
+    run_benchmark( &MDP, config );
+}
 
 void eval_racetrack( const std::string &dir ){
     
