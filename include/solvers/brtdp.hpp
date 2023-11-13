@@ -303,12 +303,10 @@ class BRTDPSolver{
         }
 
         result.multiply_bounds( config.discount_params );
-        auto rew = env.get_expected_reward( s, a );
-        rew[0] *= -1;
-        rew[1] *= -1;
-        result.shift_bounds( rew );
+        result.shift_bounds( env.get_expected_reward( s, a ) );
         auto [ ref_point, _ ] = env.min_max_discounted_reward();
 
+        // second parameter is granularity of convex hull
         result.pareto( ref_point, config.precision / 100 );
 
         /*
