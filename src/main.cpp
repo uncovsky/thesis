@@ -16,6 +16,8 @@
 
 
 int main() {
-    eval_uav( "../out/" );
+    // eval_uav( "../out/" );
+    eval_treasure( "../out/" );
+    
   //evaluate_benchmarks("../out/");
 }

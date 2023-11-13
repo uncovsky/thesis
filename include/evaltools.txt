@@ -1,0 +1,21 @@
+what needs to be done for evaluation:
+
+
+config for the solver:
+    precision, discount parameters, 
+    heuristic specification
+    trajectory - when to end
+
+config for the MDP:
+    init lower & upper bound
+    init lower upper for terminal bound if SSP
+
+what needs to be optimized:
+    trajectory end criterion:
+        can't use brtdp, have to figure out another way
+
+        limiting depth seems like an ok fast idea?
+        limit depth + brtdp criterion
+
+
+

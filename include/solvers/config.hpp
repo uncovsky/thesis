@@ -68,7 +68,7 @@ struct ExplorationSettings{
                           , trace( true )
                           , lower_bound_init()
                           , upper_bound_init() 
-                          , lower_bound_init_term( { 0, 0 } )
-                          , upper_bound_init_term( { 0, 0 } ) 
-                          , filename( "test" ){ }
+                          , lower_bound_init_term()
+                          , upper_bound_init_term() 
+                          , filename( "benchmark_test" ){ }
 };

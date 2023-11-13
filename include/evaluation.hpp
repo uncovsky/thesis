@@ -28,19 +28,25 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     CHVIExactSolver chvi( std::move( chvi_envw ), config );
 
     brtdp.solve();
-//    chvi.solve();
+    chvi.solve();
 
 }
 
 void eval_uav( const std::string &dir ){
-  PrismParser parser;
-  auto MDP = parser.parse_model( "../benchmarks/uav/out.tra",
+    PrismParser parser;
+    auto MDP = parser.parse_model( "../benchmarks/uav/out.tra",
                       {
                       "../benchmarks/uav/out1.trew",
                       "../benchmarks/uav/out2.trew"
                       },
                       0 );
 
+    auto taskgraph = parser.parse_model( "../benchmarks/pareto_taskgraph/out.tra",
+                      {
+                      "../benchmarks/pareto_taskgraph/rew1.trew",
+                      "../benchmarks/pareto_taskgraph/rew2.trew"
+                      },
+                      0 );
     ExplorationSettings< double > config;
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
@@ -48,14 +54,18 @@ void eval_uav( const std::string &dir ){
     config.min_trajectory = 100;
     config.max_trajectory = 5000;
     config.filename = dir + "uav";
-    config.max_episodes = 100000;
-    config.discount_params = { 1, 1 };
+    config.max_episodes = 30000;
+    config.discount_params = { 0.95, 0.5 };
     config.trace = false;
     config.precision = 1e-5;
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
+    config.lower_bound_init_term = {};
+    config.upper_bound_init_term = {};
 
     run_benchmark( &MDP, config );
+    config.filename = dir + "taskgraph";
+    run_benchmark( &taskgraph, config );
 }
 
 void eval_racetrack( const std::string &dir ){
@@ -78,7 +88,7 @@ void eval_racetrack( const std::string &dir ){
 
     Racetrack easy;
     config.filename = dir + "racetrack-easy";
-    easy.from_file("../benchmarks/racetrack-easy.track");
+    easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
 
@@ -86,13 +96,13 @@ void eval_racetrack( const std::string &dir ){
     config.upper_bound_init = { -10, -10 };
     config.filename = dir + "racetrack-hard";
     config.min_trajectory = 200;
-    easy.from_file("../benchmarks/racetrack-hard.track");
+    easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
     run_benchmark( &easy, config );
 
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
     config.filename = dir + "racetrack-ring";
-    easy.from_file("../benchmarks/racetrack-ring.track");
+    easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
     run_benchmark( &easy, config );
 }
 
@@ -104,7 +114,7 @@ void eval_treasure( const std::string &dir="" ){
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.max_trajectory = 5000;
     config.max_episodes = 10000;
-    config.discount_params = { 0.95, 0.95 };
+    config.discount_params = { 0.99, 0.99 };
     config.trace = false;
     config.precision = 0.1;
 
@@ -119,8 +129,8 @@ void eval_treasure( const std::string &dir="" ){
     */
 
     DeepSeaTreasure dst, dst_convex;
-    dst.from_file( "../benchmarks/treasure-concave.txt" );
-    dst_convex.from_file( "../benchmarks/treasure-convex.txt" );
+    dst.from_file( "../benchmarks/treasures/treasure-concave.txt" );
+    dst_convex.from_file( "../benchmarks/treasures/treasure-convex.txt" );
 
     config.filename = dir + "treasure-concave";
     run_benchmark( &dst, config );
