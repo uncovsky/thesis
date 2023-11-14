@@ -29,9 +29,8 @@ struct ExplorationSettings{
     // max trajectories sampled before termination
     size_t max_episodes;
 
-    // min/max trajectory length
-    size_t min_trajectory;
-    size_t max_trajectory;
+    // max trajectory depth
+    size_t max_depth;
 
     // if enabled, prints trajectories and debugging output while solving
     bool trace;
@@ -63,8 +62,7 @@ struct ExplorationSettings{
                           , state_heuristic( StateSelectionHeuristic::BRTDP )
                           , action_heuristic( ActionSelectionHeuristic::Pareto )
                           , max_episodes( 2000 )
-                          , min_trajectory( 500 )
-                          , max_trajectory( 1000 )
+                          , max_depth( 1000 )
                           , trace( true )
                           , lower_bound_init()
                           , upper_bound_init() 

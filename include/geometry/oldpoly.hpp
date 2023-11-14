@@ -184,6 +184,131 @@ public:
         vertices = std::move( new_vertices );
     }
 
+
+    void minkowski_sum( const std::vector< const ParetoCurve * > &args ) {
+
+        if ( args.empty() ){
+            return;
+        }
+
+        if ( args[0]->get_dimension() > 2 ) {
+            throw std::runtime_error("only 1d/2d operations supported for now");
+        }
+
+        if ( args[0]->get_dimension() == 2 ){
+            multiple_minkowski_sum( args );
+            return;
+        }
+
+        // else 1d
+        Point< value_t > new_pt = { 0 };
+        for ( size_t i = 0; i < args.size(); i++ ){
+            // only one point possible
+            Point< value_t > other = args[i]->get_vertices()[0];
+            new_pt[ 0 ] += other[ 0 ];
+        }
+
+        vertices = { new_pt };
+        init_facets();
+
+    }
+
+    /* preconditions: all entries in args are correctly initalized, i.e.
+     * upper_right_hull() has been called, vertices are sorted and 
+     * form a convex polygon that is nonempty
+     * args are all also 2d polygons
+     * see e.g. : https://cp-algorithms.com/geometry/minkowski.html
+     *
+     * linear time 2D minkowski sum for the bound update
+     *
+     */
+    void multiple_minkowski_sum( const std::vector< ParetoCurve< value_t > * > &args ){
+
+
+        std::vector< Point< value_t > > resulting_vertices;
+
+        // indices into vertex array of each polygon 
+        std::vector< size_t > offsets( args.size(), 0 );
+
+        // helper lambdas for indexing using both arrays
+        auto get_ith_vertex = [ & ] ( size_t polygon_idx, size_t vertex_idx ){
+            return args[ polygon_idx ]->get_vertices()[ vertex_idx ];
+        };
+
+        auto polygon_done = [ & ]( size_t polygon_idx ){
+            return offsets[ polygon_idx ] == args[ polygon_idx ]->size() - 1; 
+        };
+
+        auto sum_unfinished = [ & ](){
+            for ( size_t i = 0; i < offsets.size(); i++ ) {
+                if ( !polygon_done( i ) ) { return true; }
+            }
+            return false;
+        };
+
+        while ( sum_unfinished() ){
+            Point< value_t > next = { 0, 0 };
+            for ( size_t i = 0; i < args.size(); i++ ){
+                // select current point in polygon i and add it to next vertex
+                Point< value_t > added = get_ith_vertex( i, offsets[i] );
+                next[0] += added[0];
+                next[1] += added[1];
+            }
+
+            resulting_vertices.push_back( next );
+
+            size_t next_idx = args.size();
+            std::vector< size_t > incremented_indices = {};
+
+            /* investigate the next edge of each polygon, select those edges
+             * that correspond to the least polar angle and mark them for the
+             * next shift */ 
+            for ( size_t i = 0; i < args.size(); i++ ){
+
+                if ( polygon_done( i ) ) { continue; }
+
+                // set to first unfinished polygon 
+                if ( next_idx == args.size() ) {
+                    next_idx = i;
+                    incremented_indices = { i };
+                    continue;
+                }
+
+                Point< value_t > Pcurr = get_ith_vertex( next_idx, offsets[ next_idx ] );
+                Point< value_t > Pnext = get_ith_vertex( next_idx, offsets[ next_idx ] + 1 );
+
+                Point< value_t > Qcurr = get_ith_vertex( i, offsets[i] );
+                Point< value_t > Qnext = get_ith_vertex( i, offsets[i] + 1 );
+
+                subtract( Qnext, Qcurr );
+                double ccw_val = ccw( Pnext, Pcurr, Qnext );
+
+                if ( approx_zero( ccw_val ) ) { incremented_indices.push_back( i ); }
+                else if ( ccw_val < 0 ) { 
+                    next_idx = i;
+                    incremented_indices = { i };
+                }
+
+            }
+
+            // move all vertices corresponding to edges with least polar angles
+            for ( size_t idx : incremented_indices ){
+                offsets[ idx ]++;
+            }
+        }
+
+        // add last vertex
+        Point< value_t > next = { 0, 0 };
+        for ( size_t i = 0; i < args.size(); i++ ){
+            next[0] += args[i]->get_vertices().back()[0];
+            next[1] += args[i]->get_vertices().back()[1];
+        }
+        resulting_vertices.push_back( next );
+
+        vertices = std::move( resulting_vertices );
+        init_facets();
+    }
+
     /* downward closure for 1/2 dimensions
      * preconditions:
      * convex hull called beforehand
@@ -206,8 +331,11 @@ public:
         if ( vertices.empty() )
             return;
 
-        Point< value_t > max_x_point = vertices.back();
-        Point< value_t > max_y_point = vertices[0];
+        //TODO: use the fact that convex hull sorts
+        auto extreme_points = get_extreme_points( vertices );
+
+        Point< value_t > max_x_point = extreme_points[0].second;
+        Point< value_t > max_y_point = extreme_points[1].second;
 
 
         // add two line segments from extremal points of the curve 
@@ -215,6 +343,57 @@ public:
         Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
         facets.push_back( Facet({ facet_x, max_x_point }) );
         facets.push_back( Facet({ facet_y, max_y_point }) );
+    }
+
+
+    // more efficient + automatically remove dominated solutions
+    // eps determines the granularity of the hull
+    void upper_right_hull( double eps ){
+        if ( vertices.empty() )
+            return;
+        if ( get_dimension() > 2 ) {
+            std::cout << "Higher dimension convex hulls are currently unsupported." << std::endl;
+            assert( false );
+        }
+
+        // keep only max element
+        if ( get_dimension() == 1 ) {
+            vertices = { *std::max_element( vertices.begin(), vertices.end() ) };
+            init_facets();
+            return;
+        }
+
+        std::sort( vertices.begin(), vertices.end() );
+
+        std::vector< Point< value_t > > hull = { vertices.back() } ;
+
+        for ( auto it = vertices.rbegin() + 1; it != vertices.rend(); it++ ){
+            Point< value_t > pt = *it;
+            // need increasing y
+            if ( pt[1] <= hull.back()[1] ) { continue; }
+            else if ( hull.size() < 2 ) { hull.push_back( pt ); }
+            else { 
+                size_t i = hull.size() - 1;
+                /* if last vertex of teh hulls lies in CW direction from
+                 * pt->hull[i-1], remove the last element of the hull
+                 * repeat
+                 */
+                while ( ( hull.size() >= 2 ) && 
+                        ( ccw( pt, hull[i - 1], hull[i] ) <= eps / 100 ) ) {
+                    hull.pop_back();
+                    i--;
+                }
+                hull.push_back( pt );
+            }
+        }
+
+        vertices = std::move( hull );
+        init_facets();
+    }
+
+    void pareto( const Point< value_t >& ref_point, double prec ){
+        upper_right_hull( prec );
+        downward_closure( ref_point );
     }
 
     // precondition: pareto function has been called beforehand, facets are

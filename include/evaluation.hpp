@@ -28,7 +28,7 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     CHVIExactSolver chvi( std::move( chvi_envw ), config );
 
     brtdp.solve();
-    chvi.solve();
+    // chvi.solve();
 
 }
 
@@ -51,8 +51,7 @@ void eval_uav( const std::string &dir ){
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.state_heuristic = StateSelectionHeuristic::BRTDP;
-    config.min_trajectory = 100;
-    config.max_trajectory = 5000;
+    config.max_depth = 5000;
     config.filename = dir + "uav";
     config.max_episodes = 30000;
     config.discount_params = { 0.95, 0.5 };
@@ -74,12 +73,11 @@ void eval_racetrack( const std::string &dir ){
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.state_heuristic = StateSelectionHeuristic::BRTDP;
-    config.min_trajectory = 100;
-    config.max_trajectory = 5000;
-    config.max_episodes = 100000;
+    config.max_depth = 5000;
+    config.max_episodes = 1000;
     config.discount_params = { 1, 1 };
     config.trace = false;
-    config.precision = 1.0;
+    config.precision = 1e-4;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
     config.lower_bound_init_term = { 0, 0 };
@@ -88,6 +86,7 @@ void eval_racetrack( const std::string &dir ){
 
     Racetrack easy;
     config.filename = dir + "racetrack-easy";
+    config.trace = true;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
@@ -95,7 +94,6 @@ void eval_racetrack( const std::string &dir ){
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { -10, -10 };
     config.filename = dir + "racetrack-hard";
-    config.min_trajectory = 200;
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
     run_benchmark( &easy, config );
 
@@ -110,12 +108,11 @@ void eval_racetrack( const std::string &dir ){
 void eval_treasure( const std::string &dir="" ){
 
     ExplorationSettings< double > config;
-    config.min_trajectory = 100;
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
-    config.max_trajectory = 5000;
+    config.max_depth = 5000;
     config.max_episodes = 10000;
     config.discount_params = { 0.99, 0.99 };
-    config.trace = false;
+    config.trace = true;
     config.precision = 0.1;
 
     // at least no treasure and <100 fuel spent
@@ -140,8 +137,7 @@ void eval_treasure( const std::string &dir="" ){
 
 void eval_frozenlake( const std::string &dir ) {
     ExplorationSettings< double > config;
-    config.min_trajectory = 100;
-    config.max_trajectory = 5000;
+    config.max_depth = 5000;
     config.max_episodes = 10000;
     config.discount_params = { 0.95, 0.95 };
     config.trace = false;

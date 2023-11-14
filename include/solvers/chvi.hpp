@@ -16,9 +16,11 @@ class CHVIExactSolver{
 
     std::set< state_t > reachable_states;
 
-    // bfs to find all reachable states
+    // BFS to find all reachable states
     void set_reachable_states() {
         std::queue< state_t > q;
+
+        // get starting state, this is only called after env.reset in solve
         q.push( env.get_current_state() );
         reachable_states.insert( q.front() );
 
@@ -27,8 +29,6 @@ class CHVIExactSolver{
             state_t curr = q.front();
             q.pop();
 
-
-        
             for ( const auto &act : env.get_actions( curr ) ) {
                 for ( const auto &[ succ, _ ] : env.get_transition( curr, act ) ) {
                     if ( reachable_states.find( succ ) == reachable_states.end() ) {
@@ -55,34 +55,6 @@ class CHVIExactSolver{
             std::cout << "Total reachable states: " << reachable_states.size() << ".\n";
         }
     }
-
-    void update_bounds( state_t s, action_t a ) {
-        std::map< state_t, double > transitions = env.get_transition( s, a );
-
-        Bounds< value_t > result;
-
-        std::vector< Bounds< value_t > > successors;
-
-        for ( const auto &[ succ, prob ] : transitions ) {
-           successors.emplace_back( env.get_state_bound( succ ) );
-           successors.back().multiply_bounds( prob );
-        }
-
-        result.sum_successors( successors );
-
-        // result.nondominated();
-        result.multiply_bounds( config.discount_params );
-        result.shift_bounds( env.get_expected_reward( s, a ) );
-
-        // get the lowest possible objective value and run the pareto operator
-        /*
-        auto [ ref_point, _ ] = env.min_max_discounted_reward();
-        result.pareto( ref_point );
-        */
-
-        env.set_bound( s, a, std::move( result ) );
-    }
-
 
 public:
     CHVIExactSolver( EnvironmentHandle &&_env, 
@@ -115,7 +87,7 @@ public:
 
                 // update all s,a pairs
                 for ( const action_t &act : env.get_actions( s ) ) {
-                    update_bounds( s, act );
+                    env.update_state_action_bound( s, act );
                 }
 
                 env.update_state_bound( s );

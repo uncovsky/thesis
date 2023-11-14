@@ -9,98 +9,34 @@
 # include "utils/prng.hpp"
 # include "utils/geometry_utils.hpp"
 
-/*
- * 2D polygon class to track the pareto curve, the curve is saved as its 
- * vertices ( nondominated points after each update ).
- *
- * We make a few assumptions about the data:
- *  - facets are only initialized after a call to convex_hull ( which also sets
- *  vertices to ones of the hull )
- *  - convex hull operation sorts the vertices lexicographically
- *
- */
 template < typename value_t >
 class ParetoCurve {
 
-    // class storing facet information, currently only 1d ( line segments ) support
-    struct Facet {
-
-        std::vector< Point< value_t > > points;
-
-        value_t point_distance( const Point< value_t >& y ) const {
-        
-            if ( points.size() != 2 ) {
-                std::cout << "error: only two dimensional polygons are currently supported.\n";
-                throw std::runtime_error("invalid facet operation.");
-            }
-
-            std::vector< value_t > line( points[1] ), delta( y );
-            
-            // line is vector of the line segment, delta is vector from x1 to y
-            subtract( line, points[0] );
-            subtract( delta, points[0] );
-
-            // get projection on line segment
-            value_t coeff = std::clamp( dot_product( delta, line ) 
-                                      , value_t( 0 )
-                                      , value_t( 1 ) );
-
-            // get projection, ( line * coeff + x1 )
-            multiply( coeff, line );
-            add( line, points[0] );
-
-            // calculate distance of this projection (saved in line) from y
-            return euclidean_distance( line, y );
-
-        }
-
-        Facet() : points() {}
-        Facet( const std::vector< Point< value_t > > &_points ) : points( _points ) {
-            // keep points in lexicographic order
-            std::sort( points.begin(), points.end() );
-        }
-            
-
-        bool operator==( const Facet& other ) const{
-            return points == other.points;
-        }
-    };
-
     std::vector< Point< value_t > > vertices;
-    std::vector< Facet > facets;
+    std::set< size_t > maximizing_indices;
 
 public:
 
-    ParetoCurve( ) : vertices( ), facets( ) {  }
+
+    ParetoCurve( ) : vertices( ), maximizing_indices( ) {  }
 
     ParetoCurve( const std::vector< Point< value_t > > &v ) : vertices( v )
-                                                        , facets ( ) {  }
-
-    ParetoCurve( std::vector< Point< value_t > > &&v ) : vertices( std::move( v ) )
-                                                   , facets ( ) {  }
+                                                            , maximizing_indices ( ) {  }
 
     ParetoCurve( const std::vector< Point< value_t > > &v,
-             const std::vector< Facet > &f ) : vertices( v )
-                                             , facets ( f ) {  }
-
-    bool operator==( const ParetoCurve& rhs ) const {
-        bool equal_f = facets == rhs.get_facets();
-        bool equal_v = vertices == rhs.get_vertices();
-
-        return equal_f && equal_v;
-    }
-
+                 const std::set< size_t > &idxs ) : vertices( v )
+                                                     , maximizing_indices ( idxs ) {  }
 
     const std::vector< Point< value_t > >& get_vertices( ) const {
         return vertices;
     }
 
-    const std::vector< Facet >& get_facets( ) const {
-        return facets;
+    const std::set< size_t >& get_indices( ) const {
+        return maximizing_indices;
     }
 
-    std::vector< Facet >& get_facets( ) {
-        return facets;
+    std::set< size_t >& get_indices( ) {
+        return maximizing_indices;
     }
 
     std::vector< Point< value_t > >& get_vertices( ) {
@@ -144,24 +80,9 @@ public:
 
     }
 
-    /* precondition:
-     *  convex hull called ( vertices sorted + convex polygon )
-     */
-    void init_facets() {
-        facets.clear();
-
-        if ( vertices.size() == 1 ) {
-            facets.push_back( Facet( { vertices[0], vertices[0] } ) );
-            return;
-        }
-        
-        for ( size_t i = 0; i < vertices.size() - 1; i++ ) {
-            facets.push_back( Facet({ vertices[i], vertices[i + 1] }) );
-        }
-    }
-
     // TODO: use the fact that both polygons are convex, so its possible to
     // compute in linear time instead of O(mn)
+    /*
     void minkowski_sum( const ParetoCurve &rhs ) {
         std::vector< Point< value_t > > new_vertices;
         const std::vector< Point< value_t > > &rhs_vertices = rhs.get_vertices();
@@ -183,6 +104,8 @@ public:
 
         vertices = std::move( new_vertices );
     }
+    */
+
 
     /* downward closure for 1/2 dimensions
      * preconditions:
@@ -213,16 +136,18 @@ public:
         // add two line segments from extremal points of the curve 
         Point< value_t > facet_x = { max_x_point[0], reference_point[1] };
         Point< value_t > facet_y = { reference_point[0], max_y_point[1] };
-        facets.push_back( Facet({ facet_x, max_x_point }) );
-        facets.push_back( Facet({ facet_y, max_y_point }) );
+
+        vertices.push_back( facet_x );
+        vertices.push_back( facet_y );
     }
 
-    // precondition: pareto function has been called beforehand, facets are
-    // correctly initialized, input point is not dominated by any point on
-    // *this pareto curve
+
+
+    // preconditions ~ convex hull and downward closure called beforand
+    // point lies outside this curve
     value_t point_distance( const Point< value_t >& point ) const {
 
-        if ( facets.empty() ){
+        if ( vertices.size() < 2 ){
             throw std::runtime_error("Distance from empty pareto curve");
         }
 
@@ -231,24 +156,20 @@ public:
             return point[0] - vertices[0][0];
         }
 
-        Facet first_facet = facets[0];
-        value_t min_distance = first_facet.point_distance( point );
-
-        for ( const auto &ls : facets  ) {
-           min_distance = std::min( min_distance, ls.point_distance( point ) );
+        value_t min_distance( line_segment_distance( vertices[0], vertices[1], point ) );
+        for ( size_t i = 1; i < vertices.size() - 1 ; i++ ) {
+            min_distance = std::min( min_distance, line_segment_distance( vertices[i], vertices[i+1], point ) );
         }
-
         return min_distance;
     }
 
     /* computes hausdorff distance of two polygons, assuming *this is contained
-     * in upper_polygon entirely and facets of *this are initialized properly
-     * ( convex hull call preceded this )
+     * in upper entirely and convex hull call preceded this )
      */
-    value_t hausdorff_distance( const ParetoCurve& upper_polygon ) {
+    value_t hausdorff_distance( const ParetoCurve& upper ) {
         value_t max_distance = 0;
 
-        for ( const auto &v : upper_polygon.get_vertices() ) {
+        for ( const auto &v : upper.get_vertices() ) {
             max_distance = std::max( max_distance, point_distance( v ) );
         }
         return max_distance;
@@ -272,3 +193,6 @@ public:
         str << to_string();
     }
 };
+
+
+
