@@ -28,7 +28,7 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     CHVIExactSolver chvi( std::move( chvi_envw ), config );
 
     brtdp.solve();
-    // chvi.solve();
+    chvi.solve();
 
 }
 

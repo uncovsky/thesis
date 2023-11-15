@@ -16,19 +16,21 @@ class CHVIExactSolver{
 
     std::set< state_t > reachable_states;
 
-    // BFS to find all reachable states
+    // bfs to find all reachable states
     void set_reachable_states() {
         std::queue< state_t > q;
-
-        // get starting state, this is only called after env.reset in solve
         q.push( env.get_current_state() );
         reachable_states.insert( q.front() );
 
         while ( !q.empty() ) {
 
             state_t curr = q.front();
+            // init bounds
+            env.discover( curr );
             q.pop();
 
+
+        
             for ( const auto &act : env.get_actions( curr ) ) {
                 for ( const auto &[ succ, _ ] : env.get_transition( curr, act ) ) {
                     if ( reachable_states.find( succ ) == reachable_states.end() ) {
@@ -55,6 +57,7 @@ class CHVIExactSolver{
             std::cout << "Total reachable states: " << reachable_states.size() << ".\n";
         }
     }
+
 
 public:
     CHVIExactSolver( EnvironmentHandle &&_env, 
@@ -87,10 +90,10 @@ public:
 
                 // update all s,a pairs
                 for ( const action_t &act : env.get_actions( s ) ) {
-                    env.update_state_action_bound( s, act );
+                    env.update_bound( s, act );
                 }
 
-                env.update_state_bound( s );
+                env.update_bound( s );
             }
 
             sweeps++;

@@ -18,5 +18,4 @@ what needs to be optimized:
         limit depth + brtdp criterion
 
 
-OPTIMIZATION DIRECTION for every objective
-how to figure out bounds ? make them part of the solver as well ~ implicitly ; set to max reward which kind of sucks 
+

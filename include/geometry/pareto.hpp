@@ -15,7 +15,6 @@
  * as well, could also use an Eigen::Array with component-wise ops built in */
 
 // checks whether point lhs is pareto dominated by rhs
-/*
 template < typename value_t >
 bool is_dominated( const Point< value_t > &lhs, 
                    const Point< value_t > &rhs ) {
@@ -121,7 +120,7 @@ bool dominates_set( const Point< value_t > &point,
                         [&] ( auto candidate_pt ) { return is_dominated( candidate_pt, point ); });
 }
 
-*/
+
 /* precondition
  *  ~ vertices sorted by descending x value and dominated pts removed
  *  in our case only called after pareto() operator has run
