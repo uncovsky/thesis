@@ -24,9 +24,7 @@ class ParetoCurve {
 
     // class storing facet information, currently only 1d ( line segments ) support
     struct Facet {
-
         std::vector< Point< value_t > > points;
-
         value_t point_distance( const Point< value_t >& y ) const {
         
             if ( points.size() != 2 ) {
@@ -71,17 +69,14 @@ class ParetoCurve {
 
 public:
 
-    ParetoCurve( ) : vertices( ), facets( ) {  }
+    ParetoCurve( ) : vertices( ), facets( ), maximizing_indices() {  }
 
     ParetoCurve( const std::vector< Point< value_t > > &v ) : vertices( v )
-                                                        , facets ( ) {  }
+                                                            , facets ( ) {}
+                                                        
 
     ParetoCurve( std::vector< Point< value_t > > &&v ) : vertices( std::move( v ) )
-                                                   , facets ( ) {  }
-
-    ParetoCurve( const std::vector< Point< value_t > > &v,
-             const std::vector< Facet > &f ) : vertices( v )
-                                             , facets ( f ) {  }
+                                                       , facets ( ) {  }
 
     bool operator==( const ParetoCurve& rhs ) const {
         bool equal_f = facets == rhs.get_facets();

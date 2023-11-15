@@ -93,10 +93,6 @@ ParetoCurve< value_t > minkowski_sum( const std::vector< ParetoCurve< value_t > 
 
 
 template < typename value_t >
-struct tagged_vertex {
-}
-
-template < typename value_t >
 std::pair< std::vector< Point< value_t > >, std::set< size_t > > 
 upper_right_hull( std::vector< std::pair< size_t, Point< value_t > > > &tagged_vertices,
                   double eps ) {
@@ -211,44 +207,6 @@ public:
         return upper_bound; 
     }
 
-    std::set< size_t > get_indices() const {
-        return upper_bound.get_indices();
-    }
-
-    // joins both bounds with other, which means taking a union of both of the
-    // vertex sets
-    /*
-    void merge_bound( const Bounds< value_t > &other ) {
-        auto low_rhs = other.lower().get_vertices();
-        auto upp_rhs = other.upper().get_vertices();
-
-        auto& low_lhs = lower_bound.get_vertices();
-        auto& upp_lhs = upper_bound.get_vertices();
-
-        low_lhs.insert( low_lhs.end(), low_rhs.begin(), low_rhs.end() );
-        upp_lhs.insert( upp_lhs.end(), upp_rhs.begin(), upp_rhs.end() );
-    }
-
-    // saves minkowski sum of args bounds to this
-    void sum_successors( const std::vector< Bounds< value_t > > &args ){
-        std::vector< const ParetoCurve< value_t > * > lower_polygons, upper_polygons;
-
-        for ( const auto &bound : args ){
-            const ParetoCurve< value_t > * ptr_upp = &( bound.upper() ), * ptr_low = &( bound.lower() );
-            lower_polygons.push_back( ptr_low );
-            upper_polygons.push_back( ptr_upp );
-        }
-
-        upper_bound.minkowski_sum( upper_polygons );
-        lower_bound.minkowski_sum( lower_polygons );
-    }
-
-    void sum_bound( const Bounds< value_t > &other ){
-        lower_bound.minkowski_sum( other.lower() );
-        upper_bound.minkowski_sum( other.upper() );
-    }
-    */
-
     // helper functions for multiplying/adding scalars/vectors to all entries
     void multiply_bounds( value_t mult ) {
         lower_bound.multiply_scalar( mult );
@@ -265,17 +223,10 @@ public:
         upper_bound.shift_vector( shift );
     }
     
-    // reference point is the min of all objectives ( theoretical lowest
-    // possible value in objective space dominated by all other points )
-    /*
-    void pareto( const std::vector< value_t > &ref_point, double prec=1e-4 ) {
-        lower_bound.pareto( ref_point, prec );
-        upper_bound.pareto( ref_point, prec );
+    void init_facets() {
+        lower_bound.init_facets();
+        upper_bound.init_facets();
     }
-
-    // input conditions -> pareto operator has been ran on *this ( pareto call
-    // preceded, omitting it here for performance reasons )
-    */
 
     void downward_closure( const Point< value_t > &ref_point ) {
         lower_bound.downward_closure( ref_point );
@@ -340,6 +291,8 @@ class EnvironmentWrapper{
     std::map< state_t, size_t > update_count;
     std::map< std::tuple< state_t, action_t >, bounds_ptr > state_action_bounds;
     std::map< state_t, bounds_ptr > state_bounds;
+
+    std::map< state_t, std::vector< size_t > > optimal_actions;
 
 public:
 
@@ -569,6 +522,7 @@ public:
     void set_bound( const state_t &s, const action_t &a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
        auto [ ref_point, _ ] = min_max_discounted_reward();
+       bound.init_facets();
        bound.downward_closure( ref_point );
        state_action_bounds[ idx ] = std::make_unique< Bounds< value_t > > ( bound );
     }
@@ -576,6 +530,7 @@ public:
     // set state bound
     void set_bound( const state_t &s, Bounds< value_t > &&bound ) {
        auto [ ref_point, _ ] = min_max_discounted_reward();
+       bound.init_facets();
        bound.downward_closure( ref_point );
        state_bounds[ s ] = std::make_unique< Bounds< value_t > > ( bound );
     }
@@ -590,7 +545,11 @@ public:
     }
 
     std::set< size_t > get_maximizing_actions( const state_t &s ){
-        return state_bounds[s]->get_indices();
+        if ( optimal_actions.find(s) == optimal_actions.end() ) {
+            return get_actions(s);
+        }
+
+        return optimal_actions(s);
     }
 
     size_t get_update_num() const {
