@@ -54,7 +54,7 @@ void eval_uav( const std::string &dir ){
     config.max_depth = 5000;
     config.filename = dir + "uav";
     config.max_episodes = 30000;
-    config.discount_params = { 0.95, 0.5 };
+    config.discount_params = { 0.99, 0.99 };
     config.trace = false;
     config.precision = 1e-5;
     config.lower_bound_init = { -20, -20 };
@@ -187,6 +187,7 @@ void eval_frozenlake( const std::string &dir ) {
 }
 
 void evaluate_benchmarks( const std::string &dir="") {
+    eval_uav( dir );
     eval_treasure( dir );
     eval_racetrack( dir );
     eval_frozenlake( dir );
