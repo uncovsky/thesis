@@ -344,8 +344,8 @@ public:
             upper_curves.push_back( &( bound.upper() ) );
         }
 
-        Polygon< value_t > res_lower = hull_union( lower_curves, config.precision / 100 );
-        Polygon< value_t > res_upper = hull_union( upper_curves, config.precision / 100 );
+        Polygon< value_t > res_lower = hull_union( lower_curves, config.precision );
+        Polygon< value_t > res_upper = hull_union( upper_curves, config.precision );
 
         set_bound( s, Bounds< value_t > ( std::move( res_lower ), std::move( res_upper ) ) );
     }

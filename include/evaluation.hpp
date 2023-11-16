@@ -34,12 +34,15 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
 
 void eval_uav( const std::string &dir ){
     PrismParser parser;
+
+    /*
     auto resource = parser.parse_model( "../benchmarks/res.tra",
                       {
                       "../benchmarks/res2.trew",
                       "../benchmarks/res3.trew"
                       },
-                      0 );
+                      10 );
+    */
 
     auto MDP = parser.parse_model( "../benchmarks/uav/out.tra",
                       {
@@ -55,11 +58,12 @@ void eval_uav( const std::string &dir ){
                       },
                       0 );
     ExplorationSettings< double > config;
-    run_benchmark( &resource, config );
+    config.trace = true;
+   // run_benchmark( &resource, config );
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
-    config.max_depth = 5000;
+    config.max_depth = 1000;
     config.filename = dir + "uav";
     config.max_episodes = 30000;
     config.discount_param = 1;
@@ -199,6 +203,6 @@ void eval_frozenlake( const std::string &dir ) {
 void evaluate_benchmarks( const std::string &dir="") {
     eval_treasure( dir );
     eval_racetrack( dir );
-    eval_frozenlake( dir );
     eval_uav( dir );
+    eval_frozenlake( dir );
 }
