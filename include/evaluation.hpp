@@ -88,6 +88,8 @@ void eval_racetrack( const std::string &dir ){
     config.precision = 1e-4;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
+    config.lower_bound_init_term = { 0, 0 };
+    config.upper_bound_init_term = { 0, 0 };
 
     Racetrack easy;
     config.filename = dir + "racetrack-easy";
@@ -195,8 +197,8 @@ void eval_frozenlake( const std::string &dir ) {
 }
 
 void evaluate_benchmarks( const std::string &dir="") {
-    eval_uav( dir );
     eval_treasure( dir );
     eval_racetrack( dir );
     eval_frozenlake( dir );
+    eval_uav( dir );
 }

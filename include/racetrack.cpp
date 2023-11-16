@@ -61,7 +61,7 @@ Racetrack::reward_t Racetrack::get_reward( const VehicleState &pos,
         return { 0, 0 };
     }
 
-    // return -1 * sum of velocities as fuel reward and -1 time rew
+    // return 1 + squared sum of velocities as fuel reward and 1 time rew
     double velocity_val = std::abs( pos.velocity.first + action.first ) + std::abs( pos.velocity.second + action.second );
 
     // always lose at least one fuel and time
@@ -71,11 +71,10 @@ Racetrack::reward_t Racetrack::get_reward( const VehicleState &pos,
 std::pair< Racetrack::reward_t, Racetrack::reward_t > Racetrack::reward_range() const {
     std::vector< double > min_rew, max_rew;
 
-    // can lose at most 11 fuel per turn
     min_rew = { 0, 0 };
 
-    // after terminating race get max reward ( 0 in both comps )
-    max_rew = { 11, 1 };
+    // can lose at most 26 fuel per turn
+    max_rew = { 26, 1 };
 
     return std::make_pair( min_rew, max_rew );
 }
