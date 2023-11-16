@@ -128,19 +128,8 @@ class EnvironmentWrapper{
      * every state shares the same initial bound values, this could be expanded
      * later ( initializing procedures, like the dijkstra sweep in brtdp / etc )
      */
-    Point< value_t > init_low_bound;
-    Point< value_t > init_upp_bound;
 
-    /* specific bounds for terminal state */
-    Point< value_t > init_low_bound_term;
-    Point< value_t > init_upp_bound_term;
-
-    std::vector< value_t > discount_params;
-
-    /* precision used to build the hull, the larger 
-     * the more points get filtered out during the building of the hull 
-     */
-    double hull_precision;
+    ExplorationSettings< value_t > config;
 
     /* track update count for every state */
     std::map< state_t, size_t > update_count;
@@ -181,17 +170,35 @@ public:
 
 
     reward_t get_expected_reward( state_t s, action_t a ) {
-        return env->get_reward( s, a );
+        reward_t rew_vec = env->get_reward( s, a );
+        for ( size_t i = 0; i < std::min( config.directions.size(), rew_vec.size() ) ; i++ ) {
+            if ( config.directions[i] == OptimizationDirection::MINIMIZE ) {
+                rew_vec[i] *= -1;
+            }
+        }
+        return rew_vec;
     }
 
 
     reward_t get_expected_reward( state_t s, action_t a, state_t succ_s ) {
-        return env->get_reward( s, a );
+        return get_reward( s, a );
     }
 
 
     std::pair< reward_t, reward_t > reward_range() const {
-        return env->reward_range();
+        auto [ min_vec, max_vec ] = env->reward_range();
+
+        for ( size_t i = 0; i < std::min( config.directions.size(), min_vec.size() ) ; i++ ) {
+            if ( config.directions[i] == OptimizationDirection::MINIMIZE ) {
+
+                // swap the bounds and multiply by minus one
+                value_t new_max = min_vec[i] * -1;
+                min_vec[i] = max_vec[i] * -1;
+                max_vec[i] = new_max;
+            }
+        }
+
+        return std::make_pair( min_vec, max_vec );
     }
 
 
@@ -223,27 +230,24 @@ public:
     }
     
 
-    /* returns min/max possible objective ( discounted sum ) value given the
+    /* returns min/max possible payoff ( discounted sum ) value given the
      * min/max reward bounds 
      */
     std::pair< std::vector< value_t >, std::vector< value_t > > min_max_discounted_reward() const {
 
         auto [ min, max ] = reward_range();
 
-        std::vector< value_t > discount_copy( discount_params );
-        multiply( value_t( -1 ), discount_copy );
-        add( value_t( 1 ), discount_copy );
-        
-        divide( min, discount_copy );
-        divide( max, discount_copy );
+        value_t discount_copy = 1.0 / (1 - config.discount_param);
+        multiply( discount_copy, min );
+        multiply( discount_copy, max );
 
         return std::make_pair( min, max );
     }
 
     std::pair< std::vector< value_t >, std::vector< value_t > > get_initial_bound() const {
-        if ( init_low_bound.empty() )
+        if ( config.lower_bound_init.empty() )
             return min_max_discounted_reward();
-        return std::make_pair( init_low_bound, init_upp_bound );
+        return std::make_pair( config.lower_bound_init, config.upper_bound_init );
     }
 
 
@@ -254,8 +258,8 @@ public:
 
         Bounds< value_t > result ( { init_low } , { init_upp } );
 
-        if ( is_terminal_state( s ) && !init_low_bound_term.empty() )
-            result = Bounds< value_t >( { init_low_bound_term } , { init_upp_bound_term } );
+        if ( is_terminal_state( s ) && !config.lower_bound_init_term.empty() )
+            result = Bounds< value_t >( { config.lower_bound_init_term } , { config.upper_bound_init_term } );
 
         set_bound( s, a, std::move( result ) );
     }
@@ -325,10 +329,8 @@ public:
         Bounds< value_t > result( std::move( res_lower ), std::move( res_upper ) );
 
         // r + \gamma * U, r + \gamma * L..
-        result.multiply_bounds( discount_params );
+        result.multiply_bounds( config.discount_param );
         result.shift_bounds( get_expected_reward( s, a ) );
-
-
         set_bound( s, a, std::move( result ) ) ;
     }
 
@@ -342,8 +344,8 @@ public:
             upper_curves.push_back( &( bound.upper() ) );
         }
 
-        Polygon< value_t > res_lower = hull_union( lower_curves, hull_precision );
-        Polygon< value_t > res_upper = hull_union( upper_curves, hull_precision );
+        Polygon< value_t > res_lower = hull_union( lower_curves, config.precision / 100 );
+        Polygon< value_t > res_upper = hull_union( upper_curves, config.precision / 100 );
 
         set_bound( s, Bounds< value_t > ( std::move( res_lower ), std::move( res_upper ) ) );
     }
@@ -382,13 +384,8 @@ public:
         state_bounds[ s ] = std::make_unique< Bounds< value_t > > ( bound );
     }
 
-    void set_config( const ExplorationSettings< value_t > &config ){
-        discount_params = config.discount_params;
-        hull_precision = config.precision / 100;
-        init_low_bound = config.lower_bound_init;
-        init_upp_bound = config.upper_bound_init;
-        init_low_bound_term = config.lower_bound_init_term;
-        init_upp_bound_term = config.upper_bound_init_term;
+    void set_config( const ExplorationSettings< value_t > &_config ){
+        config = _config;
     }
 
     size_t get_update_num() const {

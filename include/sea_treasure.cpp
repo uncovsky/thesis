@@ -103,8 +103,8 @@ std::pair< DeepSeaTreasure::reward_t, DeepSeaTreasure::reward_t > DeepSeaTreasur
     // check if all non-starting squares are treasures potentially
     double min_treasure = ( width * height - 1 ) == treasures.size() ? min_it->second : 0;
 
-    std::vector< double > min_vec = { min_treasure, fuel_per_turn };
-    std::vector< double > max_vec = { max_it->second, 0 };
+    std::vector< double > min_vec = { min_treasure, 0 };
+    std::vector< double > max_vec = { max_it->second, fuel_per_turn };
 
     return std::make_pair( min_vec, max_vec );
 }

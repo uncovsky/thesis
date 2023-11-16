@@ -63,7 +63,7 @@ class DeepSeaTreasure : public Environment< TreasureState, Direction, std::vecto
     using reward_t = std::vector< double >;
 
     double noise = 0.0;
-    double fuel_per_turn = -1;
+    double fuel_per_turn = 1;
 
     size_t height, width;
     PRNG gen;

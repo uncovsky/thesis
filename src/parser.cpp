@@ -1,4 +1,5 @@
 # include <iostream>
+# include <fstream>
 # include "parser.hpp"
 
 /* 
@@ -357,6 +358,22 @@ MDP< double > PrismParser::build_model( size_t initial_state ){
     if ( translate_indices ) {
         initial_state = translate( std::to_string( initial_state ), true );
     }
+    
+
+    /*
+    std::ofstream out( "parser_test.txt" );
+    auto mat = rewards[0];
+    for ( size_t i = 0; i < mat.cols(); i++ ) {
+            for ( size_t j = 0; j < mat.rows(); j++ ){
+                if ( mat.coeffRef(j, i) > 0 ) {
+                    out << i << " " << j << " " << mat.coeffRef(j, i) << std::endl;
+                }
+            }
+    }
+
+    out.close();
+    */
+
 
     std::cout << "MDP successfuly built.\n";
 

@@ -161,28 +161,6 @@ class BRTDPSolver{
         return diff_values;
     }
 
-    /*
-     * BRTDP heuristic for successor selection, uniformly samples from
-     * successors maximizing weighted difference of their state bounds 
-     * argmax ( delta( s, a , s' ) * ( dist_H( L_i( s' ), U_i( s' ) ) ) )
-     */
-    state_t bound_difference_state_selection( const std::map< state_t, double > &transitions ) {
-
-        std::vector< value_t > diff_values = get_successor_diffs( transitions );
-        value_t diff_sum = std::accumulate( diff_values.begin(), diff_values.end(), 0 );
-
-        std::map< state_t, value_t > diff_distribution;
-        size_t succ_count = transitions.size();
-
-        size_t i = 0;
-        for ( const auto &[ s, _ ] : transitions ) {
-            diff_distribution[ s ] = ( diff_sum == 0 ) ? 1.0 / succ_count : diff_values[ i ] / diff_sum;
-            i++;
-        }
-
-        return gen.sample_distribution( diff_distribution );
-    }
-
     // picks action from avail actions based on specified heuristic
     action_t action_selection( const state_t &s, const std::vector< action_t > &avail_actions ) {
 
@@ -197,16 +175,6 @@ class BRTDPSolver{
         return gen.sample_uniformly( avail_actions );
     }
 
-
-    state_t state_selection( const std::map< state_t, double > &transitions ) {
-
-        if ( config.state_heuristic == StateSelectionHeuristic::BRTDP ) {
-            return bound_difference_state_selection( transitions );
-        }
-
-        return gen.sample_distribution( transitions );
-    }
-                               
     /*
      * samples an MDP trajectory using specified action/successor heuristics
      * and precision, initializing newly encountered state action bounds
@@ -217,7 +185,7 @@ class BRTDPSolver{
 
         std::stack< std::pair< action_t, state_t > > trajectory;
 
-        std::vector< value_t > discount_pow( config.discount_params );
+        value_t discount_pow = config.discount_param;
 
         auto [ state, _ , terminated ] = env.reset( 0, false );
         terminated = false;
@@ -270,25 +238,19 @@ class BRTDPSolver{
 
 
 
-            // weigh the sum of successor bounds with \gamma^depth
-            std::vector< value_t > discount_copy( discount_pow );
-            multiply( diff_sum, discount_copy );
             /* 
              * check conditions for terminating sampling 
+             *
+             * if sum of differences of successor bounds are sufficiently close
+             * or max depth has been reached 
              */
+            diff_sum *= discount_pow;
 
-            // if it is sufficiently close, terminate
-            bool sufficiently_close = true;
-            for ( value_t val : discount_copy ) {
-                if ( val >= config.precision / 100 ) { sufficiently_close = false; }
-            }
-
-            if ( sufficiently_close || ( iter >= config.max_depth ) ) {
+            if ( ( diff_sum < config.precision / 100 ) || ( iter >= config.max_depth ) ) {
                 terminated = true;
             }
 
-            // raise discount params to higher power
-            multiply( discount_pow, config.discount_params );
+            discount_pow *= config.discount_param;
             iter++;
 
         }

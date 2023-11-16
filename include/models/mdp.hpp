@@ -72,8 +72,8 @@ public:
     // move constructor
     MDP( TransitionMatrix&& transitions, RewardMatrix&& rewards, 
               std::pair< reward_vec, reward_vec > reward_bounds, size_t s )
-            : transitions( std::move(transitions) ) ,
-              reward_models( std::move(rewards) ) ,
+            : transitions( std::move( transitions ) ) ,
+              reward_models( std::move( rewards ) ) ,
               reward_bounds( reward_bounds ) ,
               initial_state( s ) ,
               current_state( s ) ,
@@ -107,6 +107,7 @@ public:
     size_t get_initial_state() const {
         return initial_state;
     }
+
 
 
     std::map< size_t, double > get_transition( const size_t &state, 
@@ -147,6 +148,7 @@ public:
     }
 
 
+
     bool is_terminal_state( const size_t &state ) const {
         std::vector< size_t > avail_actions = get_actions( state );
         for ( size_t action : avail_actions ) {
@@ -170,8 +172,6 @@ public:
     std::string name() const override {
         return "Sparse-MDP";
     }
-
-
 
     Observation step( const size_t &action ) override {
 

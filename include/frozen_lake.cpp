@@ -47,14 +47,14 @@ std::vector< double > FrozenLake::get_reward( const Coordinates &pos, const Dire
 
         else if ( pits.find( succ ) != pits.end() ) {
             // negative rew for pits
-            rewards[1] -= prob;
+            rewards[1] += prob;
         }
     }
     return rewards;
 }
 
 std::pair< std::vector< double >, std::vector< double > > FrozenLake::reward_range() const {
-    std::vector< double > min_vec = { 0, -1 }, max_vec = { 1, 0 };
+    std::vector< double > min_vec = { 0, 0 }, max_vec = { 1, 0 };
     return std::make_pair( min_vec, max_vec );
 }
 

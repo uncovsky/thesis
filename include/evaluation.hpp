@@ -34,6 +34,13 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
 
 void eval_uav( const std::string &dir ){
     PrismParser parser;
+    auto resource = parser.parse_model( "../benchmarks/res.tra",
+                      {
+                      "../benchmarks/res2.trew",
+                      "../benchmarks/res3.trew"
+                      },
+                      0 );
+
     auto MDP = parser.parse_model( "../benchmarks/uav/out.tra",
                       {
                       "../benchmarks/uav/out1.trew",
@@ -48,19 +55,20 @@ void eval_uav( const std::string &dir ){
                       },
                       0 );
     ExplorationSettings< double > config;
+    run_benchmark( &resource, config );
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
-    config.state_heuristic = StateSelectionHeuristic::BRTDP;
+    config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.max_depth = 5000;
     config.filename = dir + "uav";
     config.max_episodes = 30000;
-    config.discount_params = { 0.99, 0.99 };
+    config.discount_param = 1;
     config.trace = false;
     config.precision = 1e-5;
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
-    config.lower_bound_init_term = {};
-    config.upper_bound_init_term = {};
+    config.lower_bound_init_term = { 0, 0 };
+    config.upper_bound_init_term = { 0, 0 };
 
     run_benchmark( &MDP, config );
     config.filename = dir + "taskgraph";
@@ -72,17 +80,14 @@ void eval_racetrack( const std::string &dir ){
     ExplorationSettings< double > config;
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
-    config.state_heuristic = StateSelectionHeuristic::BRTDP;
-    config.max_depth = 5000;
-    config.max_episodes = 1000;
-    config.discount_params = { 1, 1 };
+    config.max_depth = 1000;
+    config.max_episodes = 10000;
     config.trace = false;
+    config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
+    config.discount_param = 1;
     config.precision = 1e-4;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
-    config.lower_bound_init_term = { 0, 0 };
-    config.upper_bound_init_term = { 0, 0 };
-
 
     Racetrack easy;
     config.filename = dir + "racetrack-easy";
@@ -91,6 +96,7 @@ void eval_racetrack( const std::string &dir ){
     run_benchmark( &easy, config );
 
 
+    config.max_depth = 5000;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { -10, -10 };
     config.filename = dir + "racetrack-hard";
@@ -109,9 +115,10 @@ void eval_treasure( const std::string &dir="" ){
 
     ExplorationSettings< double > config;
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
+    config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
     config.max_depth = 5000;
     config.max_episodes = 10000;
-    config.discount_params = { 0.99, 0.99 };
+    config.discount_param = 0.99;
     config.trace = true;
     config.precision = 0.1;
 
@@ -137,11 +144,12 @@ void eval_treasure( const std::string &dir="" ){
 
 void eval_frozenlake( const std::string &dir ) {
     ExplorationSettings< double > config;
-    config.max_depth = 5000;
+    config.max_depth = 1000;
     config.max_episodes = 10000;
-    config.discount_params = { 0.95, 0.95 };
+    config.discount_param = 0.95;
     config.trace = false;
     config.precision = 0.1;
+    config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
     config.filename = dir + "lake-easy";
     config.lower_bound_init = { 0, -3 };
     config.upper_bound_init = { 1, 0 };
@@ -154,7 +162,7 @@ void eval_frozenlake( const std::string &dir ) {
 
     PRNG gen;
     std::set< Coordinates > randpits;
-    config.discount_params = { 0.99, 0.99 };
+    config.discount_param = 0.99;
     FrozenLake lake2( 25, 25, {
                        Coordinates(1, 5),
                        Coordinates(1, 8),
