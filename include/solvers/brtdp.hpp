@@ -199,9 +199,15 @@ class BRTDPSolver{
 
             // select action in this state
             std::vector< action_t > actions = env.get_actions( state );
+
             action_t action = action_selection( state, actions );
 
             auto transitions = env.get_transition( state, action );
+
+            // (potentially) discover & initialize successors
+            for ( const auto&[ succ, prob ] : transitions ) {
+                env.discover( succ );
+            }
 
             // get bound difference for each successor
             std::vector< value_t > diff_values = get_successor_diffs( transitions );
@@ -262,9 +268,13 @@ class BRTDPSolver{
     /* executes BRTDP updates for the whole sampled trajectory */
     void update_along_trajectory( TrajectoryStack& trajectory, const state_t &starting_state ) {
         while ( !trajectory.empty() ) {
+
+            // ignoring tail state where no action was played
             auto [ a, successor ] = trajectory.top();
             trajectory.pop();
+
             state_t s = trajectory.empty() ? starting_state : trajectory.top().second;
+
             env.update_bound( s, a );
             env.update_bound( s );
         }
@@ -310,7 +320,7 @@ public:
      * all bounds are output to filename-all_bounds.txt
      * result pareto curve to filename-result.txt
      */
-    Bounds< value_t > solve() {
+    VerificationResult< value_t > solve() {
 
         auto start_time = std::chrono::steady_clock::now();
 
@@ -318,9 +328,13 @@ public:
         std::ofstream result( config.filename + "_brtdp-result.txt" );
 
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
+    
 
         // pass config to handler
         env.set_config( config );
+
+        // initialize starting state bound
+        env.discover( starting_state );
         
         Bounds< value_t > start_bound = env.get_state_bound( starting_state );
 
@@ -349,15 +363,12 @@ public:
         
         auto finish_time = std::chrono::steady_clock::now();
         std::chrono::duration< double > exec_time = finish_time - start_time;
-        logs << "\n\n\nTime elapsed: " << exec_time.count() << ".\n";
-        logs << "Total episodes: " << episode << ".\n";
-        logs << "Total updates: " << env.get_update_num() << "\n";
-        logs << "Converged distance: " << start_bound.bound_distance() << ".\n";
-        logs << start_bound;
-        
-        env.write_exploration_logs( config.filename + "_brtdp" , true );
-        result << start_bound;
-
-        return start_bound;
+        VerificationResult< value_t > res{  env.get_update_num() // num of updates
+                                       , start_bound.bound_distance() < config.precision // bool converged
+                                       , start_bound 
+                                       , exec_time.count()
+                                       , env.num_states_explored() }; // num of explored states
+                                        
+        return res;
     }
 };

@@ -84,7 +84,7 @@ void subtract( Point< value_t > &lhs,
 template < typename value_t > 
 Point< value_t > norm( const Point< value_t > &lhs ) {
 
-    return multiply( 1/dot_product( lhs, lhs ), lhs );
+    return multiply( 1.0/dot_product( lhs, lhs ), lhs );
 }
 
 

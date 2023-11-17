@@ -10,95 +10,6 @@
 #include "solvers/config.hpp"
 #include "utils/eigen_types.hpp"
 #include "utils/prng.hpp"
-
-
-/* class used to store upper and lower bounds on the objective value
- * for every state action pair. ( the over/under approximations of the pareto
- * curve )
- */
-template < typename value_t > 
-class Bounds{
-
-    Polygon< value_t > lower_bound;
-    Polygon< value_t > upper_bound;
-
-    bool distance_valid = false;
-    value_t distance = 0;
-
-public:
-
-    Bounds() : lower_bound(), upper_bound(){}
-
-    Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
-             const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
-                                                                       upper_bound( upper_pts ){}
-    Bounds ( const Polygon< value_t > &lower, 
-             const Polygon< value_t > &upper ) : lower_bound( lower ),
-                                                 upper_bound( upper ){}
-
-    Bounds ( Polygon< value_t > &&lower, 
-             Polygon< value_t > &&upper ) : lower_bound( std::move( lower ) ),
-                                            upper_bound( std::move( upper ) ){}
-
-    Polygon< value_t > &lower() {
-        return lower_bound; 
-    }
-
-    Polygon< value_t > &upper() {
-        return upper_bound; 
-    }
-
-    const Polygon< value_t > &lower() const {
-        return lower_bound; 
-    }
-
-    const Polygon< value_t > &upper() const {
-        return upper_bound; 
-    }
-
-    // helper functions for multiplying/adding scalars/vectors to all entries
-    void multiply_bounds( value_t mult ) {
-        lower_bound.multiply_scalar( mult );
-        upper_bound.multiply_scalar( mult );
-    }
-
-    void multiply_bounds( const std::vector<value_t> &mult ) {
-        lower_bound.multiply_vector( mult );
-        upper_bound.multiply_vector( mult );
-    }
-
-    void shift_bounds( const std::vector< value_t > &shift ) {
-        lower_bound.shift_vector( shift );
-        upper_bound.shift_vector( shift );
-    }
-
-    void init_facets() {
-        lower_bound.init_facets();
-    }
-
-    void downward_closure( const Point< value_t > &pt ) {
-        lower_bound.downward_closure( pt );
-    }
-
-    // input conditions -> this is a state bound set by set_bound() function,
-    // i.e. facets and downward closure intiialzied
-    value_t bound_distance(){
-        if ( !distance_valid ) {
-            distance = lower_bound.hausdorff_distance( upper_bound );
-            distance_valid = true;
-        }
-
-        return distance;
-    }
-
-    friend std::ostream &operator<<( std::ostream& os, const Bounds< value_t > &b ) {
-        os << "lower bound:\n" << b.lower().to_string() << "\n";
-        os << "upper bound:\n" << b.upper().to_string() << "\n";
-        return os;
-    }
-};
-
-
 /* this class is used to interact with the underlying environment, recording
  * statistics, simulation, logging, etc.
  * reward_t to the actual reward type ( so std::vector< double > etc. )
@@ -245,23 +156,47 @@ public:
     }
 
     std::pair< std::vector< value_t >, std::vector< value_t > > get_initial_bound() const {
+        // if no predefined bounds, calculate min max payoff
         if ( config.lower_bound_init.empty() )
             return min_max_discounted_reward();
+        // return supplied initial bound from configuration
         return std::make_pair( config.lower_bound_init, config.upper_bound_init );
     }
 
 
-    /* initializes L_0(s, a), U_0(s, a) */
-    void init_bound( const state_t &s, const action_t &a ) {
-    
+
+    // initializes all state_action bounds of s and the state bound
+    void init_bound( const state_t &s ) {
+
         auto [ init_low, init_upp ] = get_initial_bound();
+        
+        // if terminal, initialize using max payoff from avail actions
+        if ( is_terminal_state( s ) ) {
 
-        Bounds< value_t > result ( { init_low } , { init_upp } );
+            size_t act_idx = 0;
+            for ( const action_t & avail_action : get_actions( s ) ) {
+                auto act_reward = get_expected_reward( s, avail_action );
+                // if first action (todo maybe write this like a human)
+                if ( act_idx++ == 0 ) {
+                    init_low = act_reward;
+                    init_upp = init_low;
+                }
+                else {
+                    for ( size_t i = 0; i < init_low.size(); i++ ) {
+                        init_low[i] = std::min( init_low[i], act_reward[i] );
+                        init_upp[i] = std::max( init_low[i], act_reward[i] );
+                    }
+                }
+            }
+        }
 
-        if ( is_terminal_state( s ) && !config.lower_bound_init_term.empty() )
-            result = Bounds< value_t >( { config.lower_bound_init_term } , { config.upper_bound_init_term } );
+        //TODO: this is wrong, transform to payoff as well!
+        for ( const action_t & avail_action : get_actions( s ) ) {
+            Bounds< value_t > bound( { init_low }, { init_upp } );
+            set_bound( s, avail_action, std::move( bound ) );
+        }
 
-        set_bound( s, a, std::move( result ) );
+        update_bound( s );
     }
 
 
@@ -274,14 +209,9 @@ public:
      * MDP has
      */
     void discover( const state_t &s ) {
-        if ( update_count.find( s ) == update_count.end() ) {
+        if ( state_bounds.find( s ) == state_bounds.end() ) {
             update_count[ s ] = 0;
-
-            // set state action and state bound
-            for ( const action_t & avail_action : get_actions( s ) ) {
-                init_bound( s, avail_action );
-            }
-            update_bound( s );
+            init_bound( s );
         }
     }
 
@@ -309,11 +239,11 @@ public:
 
     // returns L_i(s), U_i(s)
     Bounds< value_t >& get_state_bound( const state_t &s ) {
-        discover( s );
         return *state_bounds[ s ];
     }
 
     void update_bound( const state_t &s, const action_t &a ) {
+        update_count[ s ]++;
         auto transition = get_transition( s, a );
         std::vector< Polygon< value_t > * > lower_curves, upper_curves;
         std::vector< double > probs;
@@ -335,7 +265,6 @@ public:
     }
 
     void update_bound( const state_t &s ) {
-        discover( s );
 
         std::vector< Polygon< value_t > * > lower_curves, upper_curves;
         for ( const action_t &action : get_actions( s ) ) {
@@ -352,14 +281,12 @@ public:
 
     // returns L_i(s, a), U_i(s, a)
     Bounds< value_t >& get_state_action_bound( const state_t &s, const action_t &a ) {
-        discover( s );
         auto idx = std::make_pair( s, a );
         return *state_action_bounds[ idx ];
     }
 
 
     const Bounds< value_t > &get_state_action_bound( const state_t &s, const action_t &a ) const{
-        discover( s );
         auto idx = std::make_pair( s, a );
         return *state_action_bounds[ idx ];
     }
@@ -368,7 +295,6 @@ public:
     // set state x action bound
     void set_bound( const state_t &s, const action_t &a, Bounds< value_t > &&bound ) {
        auto idx = std::make_pair( s, a );
-       update_count[ s ]++;
        state_action_bounds[ idx ] = std::make_unique< Bounds< value_t > > ( bound );
     }
 
@@ -399,6 +325,10 @@ public:
         return total;
     }
 
+    size_t num_states_explored() const {
+        return state_bounds.size();
+    }
+
     void write_exploration_logs( std::string filename, bool output_all_bounds ) const {
 
         std::ofstream out( filename + "-logs.txt" , std::ios_base::app );
@@ -422,4 +352,3 @@ public:
         }
     }
 };
-

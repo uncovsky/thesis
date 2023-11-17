@@ -1,6 +1,8 @@
 # pragma once
 
 # include "utils/eigen_types.hpp"
+# include "utils/eigen_types.hpp"
+# include "solvers/bounds.hpp"
 # include <vector>
 # include <chrono>
 
@@ -56,9 +58,6 @@ struct ExplorationSettings{
      * the terminal state of the MDP with U_0 = L_0 = 0, consider for example
      * SSP problems used by BRTDP 
      */
-
-    Point< value_t > lower_bound_init_term;
-    Point< value_t > upper_bound_init_term;
     
     // filename to output logs in
     std::string filename;
@@ -73,7 +72,25 @@ struct ExplorationSettings{
                           , trace( true )
                           , lower_bound_init()
                           , upper_bound_init() 
-                          , lower_bound_init_term()
-                          , upper_bound_init_term() 
                           , filename( "benchmark_test" ){ }
+};
+
+
+template < typename value_t >
+struct VerificationResult {
+    
+    // number of BRTDP state-action updates executed
+    size_t update_number;
+
+    // whether the solver converged in the #episodes
+    bool converged;
+
+    // bound on starting state
+    Bounds< value_t > result_bound;
+
+    // time taken 
+    double time_to_convergence;
+
+    // states that were explored / encountered during verification
+    size_t states_explored;
 };

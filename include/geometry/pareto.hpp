@@ -125,6 +125,7 @@ bool dominates_set( const Point< value_t > &point,
  *  ~ vertices sorted by descending x value and dominated pts removed
  *  in our case only called after pareto() operator has run
  *  and vertices sorted using Polygon::upper_right_hull()
+ *  TODO: maybe the order after minkowski sum call is different, check & fix, 
  */
 template< typename value_t >
 value_t hypervolume_indicator( const std::vector< Point< value_t > > &vertices,

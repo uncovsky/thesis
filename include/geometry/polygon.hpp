@@ -36,12 +36,14 @@ class Polygon {
 
             std::vector< value_t > line( points[1] ), delta( y );
             
+            
             // line is vector of the line segment, delta is vector from x1 to y
             subtract( line, points[0] );
             subtract( delta, points[0] );
 
             // get projection on line segment
-            value_t coeff = std::clamp( dot_product( delta, line ) 
+            value_t norm = dot_product( line, line ) + 0.000001;
+            value_t coeff = std::clamp( dot_product( delta, line ) / norm
                                       , value_t( 0 )
                                       , value_t( 1 ) );
 
@@ -57,13 +59,8 @@ class Polygon {
         Facet() : points() {}
         Facet( const std::vector< Point< value_t > > &_points ) : points( _points ) {
             // keep points in lexicographic order
-            std::sort( points.begin(), points.end() );
         }
             
-
-        bool operator==( const Facet& other ) const{
-            return points == other.points;
-        }
     };
 
     std::vector< Point< value_t > > vertices;
@@ -82,14 +79,6 @@ public:
     Polygon( const std::vector< Point< value_t > > &v,
              const std::vector< Facet > &f ) : vertices( v )
                                              , facets ( f ) {  }
-
-    bool operator==( const Polygon& rhs ) const {
-        bool equal_f = facets == rhs.get_facets();
-        bool equal_v = vertices == rhs.get_vertices();
-
-        return equal_f && equal_v;
-    }
-
 
     const std::vector< Point< value_t > >& get_vertices( ) const {
         return vertices;
@@ -243,6 +232,7 @@ public:
             return point[0] - vertices[0][0];
         }
 
+
         Facet first_facet = facets[0];
         value_t min_distance = first_facet.point_distance( point );
 
@@ -378,7 +368,6 @@ Polygon< value_t > weighted_minkowski_sum( const std::vector< Polygon< value_t >
     }
 
     if ( args[0]->get_dimension() == 2 ){
-        //TODO:change to multiple
         return multiple_minkowski_sum( args, probs );
     }
 
@@ -386,7 +375,7 @@ Polygon< value_t > weighted_minkowski_sum( const std::vector< Polygon< value_t >
     Point< value_t > new_pt = { 0 };
     for ( size_t i = 0; i < args.size(); i++ ){
         // only one point possible
-        Point< value_t > other = args[i]->get_vertices()[0];
+        Point< value_t > other = args[i]->get_vertex(0);
         multiply( probs[i], other );
         new_pt[ 0 ] += other[ 0 ];
     }
@@ -412,8 +401,7 @@ Polygon< value_t > multiple_minkowski_sum( const std::vector< Polygon< value_t >
 
     // helper lambdas for indexing using both arrays
     auto get_ith_vertex = [ & ] ( size_t polygon_idx, size_t vertex_idx ){
-        size_t size = curves[ polygon_idx ]->size();
-        auto pt = curves[ polygon_idx ]->get_vertex( size - vertex_idx - 1 );
+        auto pt = curves[ polygon_idx ]->get_vertex( vertex_idx );
         multiply( probs[polygon_idx], pt );
         return pt;
     };
@@ -450,10 +438,10 @@ Polygon< value_t > multiple_minkowski_sum( const std::vector< Polygon< value_t >
         // track all edges with minimal polar angle, to remove colinear
         // points
         std::vector< size_t > incremented_indices = {};
-        value_t min_dy( -1 );
+        value_t max_dy( -1 );
 
         /* investigate the next edge of each polygon, select those edges
-         * that correspond to the least polar angle and mark them for the
+         * that correspond to the least polar angle change and move them
          * next shift */ 
         for ( size_t i = 0; i < curves.size(); i++ ){
 
@@ -465,14 +453,15 @@ Polygon< value_t > multiple_minkowski_sum( const std::vector< Polygon< value_t >
             Point< value_t > Pnext = get_ith_vertex( i, offsets[i] + 1 );
             value_t dy = ( Pcurr[1] - Pnext[1] ) / ( Pnext[0] - Pcurr[0] );
 
-            // if minimal, set as new minimum
-            if ( ( min_dy == -1 ) || ( dy < min_dy ) ){
-                min_dy = dy;
+            // if maximal => least change, since the curves are ordered 
+            // with decreasing x after convex hull calls
+            if ( ( max_dy == -1 ) || ( dy > max_dy ) ){
+                max_dy = dy;
                 incremented_indices = { i };
             }
 
             // if multiple edges have minimal, we will move them all
-            else if ( dy == min_dy ) {
+            else if ( dy == max_dy ) {
                 incremented_indices.push_back( i );
             }
 

@@ -66,13 +66,14 @@ public:
                                                                    , reachable_states() 
                                                                    , config( config )   {  }
 
-    Bounds< value_t > solve() {
+    VerificationResult< value_t > solve() {
 
         auto start_time = std::chrono::steady_clock::now();
         std::ofstream logs( config.filename + "_chvi-logs.txt" );
         std::ofstream result( config.filename + "_chvi-result.txt" );
 
         size_t sweeps = 0;
+        reachable_states.clear();
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
 
         env.set_config( config );
@@ -82,6 +83,9 @@ public:
 
             if ( config.trace ) {
                 logs << "Sweep number: " << sweeps << ".\n";
+                std::cout << "Sweep number: " << sweeps << ".\n";
+                std::cout <<  env.get_state_bound( starting_state ).bound_distance() << ".\n";
+                std::cout <<  env.get_state_bound( starting_state ) << ".\n";
             }
 
             for ( const state_t &s : reachable_states ) {
@@ -100,20 +104,19 @@ public:
             if ( sweeps >= config.max_episodes ) { break; }
         }
 
-        auto start_bound = env.get_state_bound( starting_state );
         auto finish_time = std::chrono::steady_clock::now();
+        auto start_bound = env.get_state_bound( starting_state );
         std::chrono::duration< double > exec_time = finish_time - start_time;
-        logs << "Reachable states:" << reachable_states.size() << ".\n";
-        logs << "\n\n\nTime elapsed: " << exec_time.count() << ".\n";
-        logs << "Total sweeps: " << sweeps << "\n";
-        logs << "Total updates: " << env.get_update_num() << "\n";
-        logs << "Converged distance: " << start_bound.bound_distance() << "\n";
-        logs << start_bound;
 
-        env.write_exploration_logs( config.filename + "_chvi", true );
-        result << start_bound;
+        VerificationResult< value_t > res{  env.get_update_num() // num of updates
+                                       , start_bound.bound_distance() < config.precision // bool converged
+                                       , start_bound 
+                                       , exec_time.count()
+                                       , env.num_states_explored() }; // num of explored states
+                                        
 
-        return start_bound;
+        env.write_exploration_logs( "test_chvi", true );
+        return res;
     }
 
 };
