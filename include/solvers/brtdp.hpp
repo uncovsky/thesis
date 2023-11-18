@@ -252,7 +252,7 @@ class BRTDPSolver{
              */
             diff_sum *= discount_pow;
 
-            if ( ( diff_sum < config.precision / 100 ) || ( iter >= config.max_depth ) ) {
+            if ( ( diff_sum < config.precision / 1000 ) || ( iter >= config.max_depth ) ) {
                 terminated = true;
             }
 

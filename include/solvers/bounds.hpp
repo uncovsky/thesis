@@ -1,8 +1,14 @@
 # pragma once
 #include "geometry/polygon.hpp"
+
+
+
 /* class used to store upper and lower bounds on the objective value
  * for every state action pair. ( the over/under approximations of the pareto
  * curve )
+ *
+ * technically these are just pairs of Polygon< T > objects with some
+ * additional helper functions ~ like calculating distance, etc.
  */
 template < typename value_t > 
 class Bounds{

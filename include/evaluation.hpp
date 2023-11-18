@@ -58,7 +58,7 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=5 ){
+                    size_t repeat=1 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -100,8 +100,8 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
         
     // using the first result for now, could check convergence as well
     for ( size_t i = 0; i < brtdp_results.size(); i++ ) {
-        curve << "Curve - run " << i << "\n" brtdp_results[i].result_bound.lower().to_string() << "\n";
-        curve << "Curve - run " << i << "\n" chvi_results[i].result_bound.lower().to_string() << "\n";
+        curve << "Curve - run " << i << "\n" << brtdp_results[i].result_bound.lower().to_string() << "\n";
+        curve_chvi << "Curve - run " << i << "\n" << chvi_results[i].result_bound.lower().to_string() << "\n";
     }
 
     out.close();
@@ -173,7 +173,7 @@ void eval_racetrack( const std::string &dir ){
     config.trace = false;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.discount_param = 1;
-    config.precision = 1e-2;
+    config.precision = 0.1;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
 

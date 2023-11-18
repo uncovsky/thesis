@@ -33,27 +33,7 @@ class Polygon {
                 std::cout << "error: only two dimensional polygons are currently supported.\n";
                 throw std::runtime_error("invalid facet operation.");
             }
-
-            std::vector< value_t > line( points[1] ), delta( y );
-            
-            
-            // line is vector of the line segment, delta is vector from x1 to y
-            subtract( line, points[0] );
-            subtract( delta, points[0] );
-
-            // get projection on line segment
-            value_t norm = dot_product( line, line ) + 0.000001;
-            value_t coeff = std::clamp( dot_product( delta, line ) / norm
-                                      , value_t( 0 )
-                                      , value_t( 1 ) );
-
-            // get projection, ( line * coeff + x1 )
-            multiply( coeff, line );
-            add( line, points[0] );
-
-            // calculate distance of this projection (saved in line) from y
-            return euclidean_distance( line, y );
-
+            return line_segment_distance( points[0], points[1], y );
         }
 
         Facet() : points() {}
@@ -312,7 +292,9 @@ std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > 
              * pt->hull[i-1], remove the last element of the hull
              * repeat
              */
-            while ( ( hull.size() >= 2 ) && ( ( ccw( pt, hull[i - 1], hull[i] ) <= 0 ) || ( line_segment_distance( pt, hull[i - 1], hull[i] ) < eps / 2 ) ) ){
+            while ( ( hull.size() >= 2 ) && 
+                    ( ( ccw( pt, hull[i - 1], hull[i] ) <= 0 ) || 
+                      ( line_segment_distance( pt, hull[i - 1], hull[i] ) < eps / 4 ) ) ){
                 hull.pop_back();
                 i--;
             }
