@@ -39,35 +39,28 @@ class BRTDPSolver{
      */
     action_t pareto_action( const state_t &s, const std::vector< action_t > &avail_actions ) {
 
-        using vertex_vec = typename std::vector< Point< value_t > >; 
-
-        std::vector< vertex_vec > bounds;
+        std::vector< Point< value_t > > &nondominated = env.get_state_bound( s ).upper().get_vertices();
 
         std::set< action_t > pareto_actions;
 
-        // copy vertices of upper bounds
         for ( const action_t &a : avail_actions ) {
+            std::vector< Point< value_t > > &sa_points = env.get_state_action_bound( s, a ).upper().get_vertices();
 
-            vertex_vec vertices;
-            // get vertices of respective upper bound and copy them into a set
-            vertices = env.get_state_action_bound( s, a ).upper().get_vertices();
-            bounds.push_back( vertices );
-        }
+            bool opt = false;
+            for ( const auto &pt : sa_points ) {
 
-        vertex_vec nondominated = env.get_state_bound( s ).upper().get_vertices();
-
-        for ( const auto &point : nondominated ) {
-            size_t i = 0;
-            for ( const action_t &action : avail_actions ) {
-                /* if Q value of this action contains a nondominated point, add
-                 * it to candidates for action selection
-                 */
-                if ( ( pareto_actions.find( action ) == pareto_actions.end() ) &&
-                       ( std::find( bounds[i].begin(), bounds[i].end(), point ) != bounds[i].end() ) ) {
-                    pareto_actions.insert( action );
+                // the convex hull operation sorts in reverse order, hence the
+                // comparator
+                if ( std::binary_search( nondominated.begin(), 
+                                         nondominated.end(), 
+                                         pt, 
+                                         []( const auto &x, const auto &y ){ return x[0] > y[0]; }) )  
+                {
+                    pareto_actions.insert( a );
+                    opt = true;
                 }
 
-                i++;
+                if ( opt ) { break; }
             }
         }
 

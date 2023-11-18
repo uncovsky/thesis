@@ -58,7 +58,7 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=3 ){
+                    size_t repeat=5 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -151,7 +151,7 @@ void eval_uav( const std::string &dir ){
     config.filename = "uav";
     config.max_episodes = 30000;
     config.discount_param = 1;
-    config.trace = false;
+    config.trace = true;
     config.precision = 0.01;
 
     config.lower_bound_init = { -20, -20 };
@@ -170,7 +170,7 @@ void eval_racetrack( const std::string &dir ){
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.max_depth = 500;
     config.max_episodes = 10000;
-    config.trace = false;
+    config.trace = true;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.discount_param = 1;
     config.precision = 0.01;
@@ -189,6 +189,7 @@ void eval_racetrack( const std::string &dir ){
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
     run_benchmark( &easy, config );
 
+    /*
     config.max_depth = 3000;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
@@ -201,6 +202,7 @@ void eval_racetrack( const std::string &dir ){
     config.filename = "racetrack-hard-10000";
     config.max_depth = 10000;
     run_benchmark( &easy, config, 2 );
+    */
 }
 
 
@@ -282,8 +284,8 @@ void eval_frozenlake( const std::string &dir ) {
 }
 
 void evaluate_benchmarks( const std::string &dir="") {
-    eval_uav( dir );
+    // eval_uav( dir );
     eval_racetrack( dir );
-    eval_treasure( dir );
-    eval_frozenlake( dir );
+    // eval_treasure( dir );
+    // eval_frozenlake( dir );
 }
