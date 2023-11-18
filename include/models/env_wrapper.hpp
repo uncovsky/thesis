@@ -236,6 +236,17 @@ public:
         return true;
     }
 
+    // returns L_i(s, a), U_i(s, a)
+    Bounds< value_t >& get_state_action_bound( const state_t &s, const action_t &a ) {
+        auto idx = std::make_pair( s, a );
+        return *state_action_bounds[ idx ];
+    }
+
+
+    const Bounds< value_t > &get_state_action_bound( const state_t &s, const action_t &a ) const{
+        auto idx = std::make_pair( s, a );
+        return *state_action_bounds[ idx ];
+    }
 
     // returns L_i(s), U_i(s)
     Bounds< value_t >& get_state_bound( const state_t &s ) {
@@ -279,17 +290,6 @@ public:
         set_bound( s, Bounds< value_t > ( std::move( res_lower ), std::move( res_upper ) ) );
     }
 
-    // returns L_i(s, a), U_i(s, a)
-    Bounds< value_t >& get_state_action_bound( const state_t &s, const action_t &a ) {
-        auto idx = std::make_pair( s, a );
-        return *state_action_bounds[ idx ];
-    }
-
-
-    const Bounds< value_t > &get_state_action_bound( const state_t &s, const action_t &a ) const{
-        auto idx = std::make_pair( s, a );
-        return *state_action_bounds[ idx ];
-    }
 
 
     // set state x action bound

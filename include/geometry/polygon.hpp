@@ -256,13 +256,7 @@ public:
 };
 
 
-
-
-
-
-
-
-// TODO:change this mayhaps?
+// TODO:change this mayhaps? ~ tag maximizing vertices
 template< typename value_t > 
 std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > > &vertices, double eps ){
     if ( vertices.empty() )
@@ -307,6 +301,7 @@ std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > 
 
 
 
+
 template< typename value_t > 
 Polygon< value_t > hull_union( std::vector< Polygon< value_t > * > curves,
                  double eps ){
@@ -322,6 +317,7 @@ Polygon< value_t > hull_union( std::vector< Polygon< value_t > * > curves,
 }
 
 
+/* O(mn) minkowski update */
 template< typename value_t >
 Polygon< value_t > naive_minkowski_sum( const std::vector< Polygon< value_t > * > &args,
                                         const std::vector< double > &probs ) {
@@ -338,7 +334,6 @@ Polygon< value_t > naive_minkowski_sum( const std::vector< Polygon< value_t > * 
 
 
 
-/* update operations */
 template < typename value_t >
 Polygon< value_t > weighted_minkowski_sum( const std::vector< Polygon< value_t > * > &args,
                              const std::vector< double > &probs ) {

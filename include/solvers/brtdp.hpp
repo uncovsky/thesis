@@ -47,25 +47,11 @@ class BRTDPSolver{
 
         // copy vertices of upper bounds
         for ( const action_t &a : avail_actions ) {
-            // std::cout << a <<"-";
-            vertex_vec vertices;
 
+            vertex_vec vertices;
             // get vertices of respective upper bound and copy them into a set
             vertices = env.get_state_action_bound( s, a ).upper().get_vertices();
             bounds.push_back( vertices );
-
-            
-            
-            /*
-            std::cout << "Action: " << a << "\n";
-            for ( auto pt : bounds.back() ){
-                for ( auto dim : pt ) {
-                    std::cout << dim << " ";
-                }
-
-                std::cout << "\n\n";
-           }
-           */
         }
 
         vertex_vec nondominated = env.get_state_bound( s ).upper().get_vertices();
@@ -84,25 +70,6 @@ class BRTDPSolver{
                 i++;
             }
         }
-
-        /*
-        std::cout << "\n" << s << "\n\nNondominated:\n";
-        
-        for ( const auto &pt : nondominated ) {
-            for ( auto dim : pt ) {
-                std::cout << dim << " ";
-            }
-            std::cout << "\n";
-        }
-
-        std::cout << "\n\n Pareto actions";
-
-        for ( const auto a : pareto_actions ) {
-            std::cout << a << " ";
-        }
-
-        std::cout << std::endl;
-        */
 
         // choose uniformly from these actions
         return gen.sample_uniformly( pareto_actions );
@@ -155,7 +122,8 @@ class BRTDPSolver{
     std::vector< value_t > get_successor_diffs( const std::map< state_t , double > &transition ){
         std::vector< value_t > diff_values;
         for ( const auto &[ s, prob ] : transition ) {
-            diff_values.push_back( env.get_state_bound( s ).bound_distance() * prob );
+            Bounds< value_t > &bound = env.get_state_bound( s );
+            diff_values.push_back( bound.bound_distance() * prob );
         }
 
         return diff_values;

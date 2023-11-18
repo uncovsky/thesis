@@ -58,7 +58,7 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=1 ){
+                    size_t repeat=3 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -100,8 +100,8 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
         
     // using the first result for now, could check convergence as well
     for ( size_t i = 0; i < brtdp_results.size(); i++ ) {
-        curve << "Curve - run " << i << "\n" << brtdp_results[i].result_bound.lower().to_string() << "\n";
-        curve_chvi << "Curve - run " << i << "\n" << chvi_results[i].result_bound.lower().to_string() << "\n";
+        curve << "Curve - run " << i << "\n" << brtdp_results[i].result_bound.lower().to_string() << std::endl;
+        curve_chvi << "Curve - run " << i << "\n" << chvi_results[i].result_bound.lower().to_string() << std::endl;
     }
 
     out.close();
@@ -151,8 +151,8 @@ void eval_uav( const std::string &dir ){
     config.filename = "uav";
     config.max_episodes = 30000;
     config.discount_param = 1;
-    config.trace = true;
-    config.precision = 1e-5;
+    config.trace = false;
+    config.precision = 0.01;
 
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
@@ -173,13 +173,13 @@ void eval_racetrack( const std::string &dir ){
     config.trace = false;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.discount_param = 1;
-    config.precision = 0.1;
+    config.precision = 0.01;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
 
     Racetrack easy;
     config.filename = "racetrack-easy";
-    config.trace = true;
+    config.trace = false;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
@@ -192,9 +192,15 @@ void eval_racetrack( const std::string &dir ){
     config.max_depth = 3000;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
-    config.filename = "racetrack-hard";
+    config.filename = "racetrack-hard-3000";
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
-    run_benchmark( &easy, config );
+    run_benchmark( &easy, config, 2 );
+    config.filename = "racetrack-hard-1000";
+    config.max_depth = 1000;
+    run_benchmark( &easy, config, 2 );
+    config.filename = "racetrack-hard-10000";
+    config.max_depth = 10000;
+    run_benchmark( &easy, config, 2 );
 }
 
 
@@ -207,7 +213,7 @@ void eval_treasure( const std::string &dir="" ){
     config.max_episodes = 10000;
     config.discount_param = 0.99;
     config.trace = false;
-    config.precision = 0.1;
+    config.precision = 0.01;
 
     // at least no treasure and <100 fuel spent
     config.lower_bound_init = { 0, -100 };
@@ -231,7 +237,7 @@ void eval_frozenlake( const std::string &dir ) {
     config.max_episodes = 10000;
     config.discount_param = 0.95;
     config.trace = false;
-    config.precision = 0.1;
+    config.precision = 0.01;
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
     config.filename = "lake-easy";
     config.lower_bound_init = { 0, -3 };
@@ -276,8 +282,8 @@ void eval_frozenlake( const std::string &dir ) {
 }
 
 void evaluate_benchmarks( const std::string &dir="") {
-    eval_racetrack( dir );
     eval_uav( dir );
+    eval_racetrack( dir );
     eval_treasure( dir );
     eval_frozenlake( dir );
 }

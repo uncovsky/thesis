@@ -23,6 +23,10 @@ public:
 
     Bounds() : lower_bound(), upper_bound(){}
 
+    Bounds( const Bounds< value_t > &other ) : lower_bound( other.lower() )
+                                             , upper_bound( other.upper() )
+                                             , distance_valid( other.is_valid_distance() ){}
+
     Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
              const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
                                                                        upper_bound( upper_pts ){}
@@ -72,6 +76,10 @@ public:
 
     void downward_closure( const Point< value_t > &pt ) {
         lower_bound.downward_closure( pt );
+    }
+
+    bool is_valid_distance() const {
+        return distance_valid;
     }
 
     // input conditions -> this is a state bound set by set_bound() function,
