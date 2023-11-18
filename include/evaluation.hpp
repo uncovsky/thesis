@@ -90,8 +90,8 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     // destination csv file
     std::ofstream out( "../out/results.csv", std::fstream::app );
     std::ofstream expl( "../out/explored.csv", std::fstream::app );
-    std::ofstream curve( "../out/" + config.filename + "_brtdp_curve.txt");
-    std::ofstream curve_chvi( "../out/" + config.filename + "_chvi_curve.txt");
+    std::ofstream curve( "../out/" + config.filename + "_brtdp_curve.txt", std::fstream::app );
+    std::ofstream curve_chvi( "../out/" + config.filename + "_chvi_curve.txt", std::fstream::app);
 
     out << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.time_mean << ";" << brtdp_logs.time_std << ";";
     out << brtdp_logs.updates_mean << ";" << brtdp_logs.updates_std << ";";
@@ -99,8 +99,10 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     expl << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.explored_mean << ";" << brtdp_logs.explored_std << "\n";
         
     // using the first result for now, could check convergence as well
-    curve << brtdp_results[0].result_bound.lower().to_string(); 
-    curve_chvi << chvi_results[0].result_bound.lower().to_string(); 
+    for ( size_t i = 0; i < brtdp_results.size(); i++ ) {
+        curve << "Curve - run " << i << "\n" brtdp_results[i].result_bound.lower().to_string() << "\n";
+        curve << "Curve - run " << i << "\n" chvi_results[i].result_bound.lower().to_string() << "\n";
+    }
 
     out.close();
     curve.close();
@@ -179,21 +181,20 @@ void eval_racetrack( const std::string &dir ){
     config.filename = "racetrack-easy";
     config.trace = true;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
-    run_benchmark( &easy, config , 1);
+    run_benchmark( &easy, config );
 
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
     config.filename = "racetrack-ring";
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
-    run_benchmark( &easy, config , 1);
+    run_benchmark( &easy, config );
 
     config.max_depth = 3000;
     config.lower_bound_init = { -1000, -1000 };
-    config.upper_bound_init = { -10, -10 };
+    config.upper_bound_init = { 0, 0 };
     config.filename = "racetrack-hard";
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
-    run_benchmark( &easy, config, 1);
-
+    run_benchmark( &easy, config );
 }
 
 
@@ -275,8 +276,8 @@ void eval_frozenlake( const std::string &dir ) {
 }
 
 void evaluate_benchmarks( const std::string &dir="") {
+    eval_racetrack( dir );
     eval_uav( dir );
     eval_treasure( dir );
-    eval_racetrack( dir );
     eval_frozenlake( dir );
 }

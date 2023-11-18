@@ -282,6 +282,7 @@ public:
 
 
 
+// TODO:change this mayhaps?
 template< typename value_t > 
 std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > > &vertices, double eps ){
     if ( vertices.empty() )
@@ -311,7 +312,7 @@ std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > 
              * pt->hull[i-1], remove the last element of the hull
              * repeat
              */
-            while ( ( hull.size() >= 2 ) && ( ccw( pt, hull[i - 1], hull[i] ) <= eps ) ){
+            while ( ( hull.size() >= 2 ) && ( ( ccw( pt, hull[i - 1], hull[i] ) <= 0 ) || ( line_segment_distance( pt, hull[i - 1], hull[i] ) < eps / 2 ) ) ){
                 hull.pop_back();
                 i--;
             }

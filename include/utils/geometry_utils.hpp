@@ -115,7 +115,8 @@ value_t line_segment_distance( const Point< value_t > &beg,
     subtract( delta, beg );
 
     // get projection on line segment
-    value_t coeff = std::clamp( dot_product( delta, line ) , value_t( 0 ), value_t( 1 ) );
+    value_t norm = dot_product( line, line ) + 0.000001;
+    value_t coeff = std::clamp( dot_product( delta, line ) / norm , value_t( 0 ), value_t( 1 ) );
 
     // get projection, ( line * coeff + x1 )
     multiply( coeff, line );
