@@ -79,12 +79,12 @@ public:
         env.set_config( config );
         set_reachable_states();
         
-        while ( env.get_state_bound( starting_state ).bound_distance() >= config.precision ){
+        while ( env.get_state_bound( starting_state ).hausdorff_distance() >= config.precision ){
 
             if ( config.trace ) {
                 logs << "Sweep number: " << sweeps << ".\n";
                 std::cout << "Sweep number: " << sweeps << ".\n";
-                std::cout <<  env.get_state_bound( starting_state ).bound_distance() << ".\n";
+                std::cout <<  env.get_state_bound( starting_state ).hausdorff_distance() << ".\n";
                 std::cout <<  env.get_state_bound( starting_state ) << ".\n";
             }
 
@@ -109,7 +109,7 @@ public:
         std::chrono::duration< double > exec_time = finish_time - start_time;
 
         VerificationResult< value_t > res{  env.get_update_num() // num of updates
-                                       , start_bound.bound_distance() < config.precision // bool converged
+                                       , start_bound.hausdorff_distance() < config.precision // bool converged
                                        , start_bound 
                                        , exec_time.count()
                                        , env.num_states_explored() }; // num of explored states

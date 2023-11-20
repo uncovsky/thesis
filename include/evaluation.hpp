@@ -58,7 +58,7 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=5 ){
+                    size_t repeat=3 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -109,15 +109,8 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     curve_chvi.close();
     expl.close();
 }
-void eval_uav( const std::string &dir ){
+void eval_uav( const std::string &dir, double tau ){
 
-    // hacky way of clearing the file and inputing legend
-    std::ofstream out( "../out/results.csv" );
-    std::ofstream expl( "../out/explored.csv" );
-    out << "Benchmark name;num of states;time mean brtdp;time std brtdp;updates brtdp mean;updates brtdp std;time chvi; updates chvi\n";
-    expl << "Benchmark name; num of states; mean; std\n";
-    out.close();
-    expl.close();
     PrismParser parser;
 
     /*
@@ -129,7 +122,7 @@ void eval_uav( const std::string &dir ){
                       10 );
     */
 
-    auto MDP = parser.parse_model( "../benchmarks/uav/out.tra",
+    auto uav5 = parser.parse_model( "../benchmarks/uav/out.tra",
                       {
                       "../benchmarks/uav/out1.trew",
                       "../benchmarks/uav/out2.trew"
@@ -142,44 +135,64 @@ void eval_uav( const std::string &dir ){
                       "../benchmarks/pareto_taskgraph/rew2.trew"
                       },
                       0 );
+
+    auto teamform2 = parser.parse_model( "../benchmarks/teamform/teamform2.tra",
+                                         {
+                                            "../benchmarks/teamform/teamform21.trew",
+                                            "../benchmarks/teamform/teamform22.trew"
+                                         }, 0);
+
+    auto teamform3 = parser.parse_model( "../benchmarks/teamform/teamform3.tra",
+                                         {
+                                            "../benchmarks/teamform/teamform31.trew",
+                                            "../benchmarks/teamform/teamform32.trew"
+                                         }, 0 );
+
     ExplorationSettings< double > config;
    // run_benchmark( &resource, config );
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.max_depth = 1000;
-    config.filename = "uav";
+    config.filename = "uav5";
     config.max_episodes = 30000;
     config.discount_param = 1;
     config.trace = true;
     config.precision = 0.01;
+    config.depth_constant = tau;
 
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
-
     run_benchmark( &MDP, config );
-    config.filename = "taskgraph";
+
+    config.filename = "teamform2";
     config.discount_param = 0.9;
+    config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MAXIMIZE };
+    config.lower_bound_init = { 0, 0 };
+    config.upper_bound_init = { 20, 20 };
+    run_benchmark( &teamform2, config );
+    config.filename = "teamform3";
+    run_benchmark( &teamform3, config );
     //run_benchmark( &taskgraph, config );
 }
 
-void eval_racetrack( const std::string &dir ){
+void eval_racetrack( const std::string &dir, double tau ){
     
     ExplorationSettings< double > config;
 
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
     config.max_depth = 500;
     config.max_episodes = 10000;
-    config.trace = true;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.discount_param = 1;
     config.precision = 0.01;
+    config.depth_constant = tau;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
 
     Racetrack easy;
     config.filename = "racetrack-easy";
-    config.trace = false;
+    config.trace = true;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
@@ -189,13 +202,13 @@ void eval_racetrack( const std::string &dir ){
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
     run_benchmark( &easy, config );
 
-    /*
     config.max_depth = 3000;
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
     config.filename = "racetrack-hard-3000";
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
     run_benchmark( &easy, config, 2 );
+    /*
     config.filename = "racetrack-hard-1000";
     config.max_depth = 1000;
     run_benchmark( &easy, config, 2 );
@@ -283,9 +296,8 @@ void eval_frozenlake( const std::string &dir ) {
     run_benchmark( &lake2, config );
 }
 
-void evaluate_benchmarks( const std::string &dir="") {
-    // eval_uav( dir );
-    eval_racetrack( dir );
-    // eval_treasure( dir );
-    // eval_frozenlake( dir );
+void evaluate_benchmarks( const std::string &dir="", double tau ) {
+    eval_uav( dir, tau );
+    eval_racetrack( dir, tau );
 }
+

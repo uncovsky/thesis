@@ -11,12 +11,8 @@
 
 /*
  * 2D polygon class to track the pareto curve, the curve is saved as its 
- * vertices ( nondominated points after each update ).
- *
- * We make a few assumptions about the data:
- *  - facets are only initialized after a call to convex_hull ( which also sets
- *  vertices to ones of the hull )
- *  - convex hull operation sorts the vertices lexicographically
+ * vertices ( nondominated points after each update ), sorted from largest x
+ * coordinate to lowest
  *
  */
 template < typename value_t >
@@ -90,6 +86,8 @@ public:
         return vertices[i];
     }
 
+    /* helper methods for shifting vertices by scalar / vector values
+     * work in place, i.e. modify *this polygon */
     void multiply_scalar( value_t mult ) {
         for ( Point< value_t > &p : vertices ) {
             // p = mult p
@@ -112,24 +110,7 @@ public:
 
     }
 
-    /* precondition:
-     *  convex hull called ( vertices sorted + convex polygon )
-     */
-    void init_facets() {
-        facets.clear();
-
-        if ( vertices.size() == 1 ) {
-            facets.push_back( Facet( { vertices[0], vertices[0] } ) );
-            return;
-        }
-        
-        for ( size_t i = 0; i < vertices.size() - 1; i++ ) {
-            facets.push_back( Facet({ vertices[i], vertices[i + 1] }) );
-        }
-    }
-
-    // TODO: use the fact that both polygons are convex, so its possible to
-    // compute in linear time instead of O(mn)
+    // naive minkowski sum implementation
     void minkowski_sum( const Polygon &rhs, value_t weight ) {
         std::vector< Point< value_t > > new_vertices;
         const std::vector< Point< value_t > > &rhs_vertices = rhs.get_vertices();
@@ -159,13 +140,55 @@ public:
         vertices = std::move( new_vertices );
     }
 
+    // calculates the hypervolume of this polygon w.r.t. ref_point
+    // again assumes that this is a proper pareto curve, sorted, etc.
+    value_t hypervolume( const Point< value_t >&ref_point ) const {
+
+        if ( vertices.empty() )
+            return 0;
+
+        if ( get_dimension() == 1 ) {
+            return vertices[0][0] - ref_point[0];
+        }
+
+        if ( get_dimension() > 2 ) {
+            throw std::runtime_error( ">2D hypervolumes are unsupported" );
+        }
+
+        value_t hv = ( vertices[0][0] - ref_point[0] ) * ( vertices[0][1] - ref_point[1] );
+
+        for ( size_t i = 1; i < vertices.size(); i++ ) {
+            // sum up piece of the polygon -> a rectangle and a triangle
+            hv += ( vertices[i][0] - ref_point[0] + 0.5 * ( vertices[i-1][0] - vertices[i][0] ) ) * ( vertices[i][1] - vertices[i-1][1] );
+        }
+
+        return hv;
+    }
 
 
-    /* downward closure for 1/2 dimensions
+
+    /*
+     * closure & distance methods
      * preconditions:
-     * convex hull called beforehand
-     * reference point contains minimal values for each objective
+     *  the polygon must be convex + nondominated points removed
+     *  vertices are ordered with descending x values
+     *
+     * (essentially, works for polygons obtained from  the union_hull()
+     * and weighed_minkowski_sum() functions during updates )
      */
+
+    void init_facets() {
+        facets.clear();
+
+        if ( vertices.size() == 1 ) {
+            facets.push_back( Facet( { vertices[0], vertices[0] } ) );
+            return;
+        }
+        
+        for ( size_t i = 0; i < vertices.size() - 1; i++ ) {
+            facets.push_back( Facet({ vertices[i], vertices[i + 1] }) );
+        }
+    }
     void downward_closure( const Point< value_t > &reference_point ) {
 
         assert( get_dimension() == reference_point.size() );
@@ -183,11 +206,9 @@ public:
         if ( vertices.empty() )
             return;
 
-        //TODO: use the fact that convex hull sorts
-        auto extreme_points = get_extreme_points( vertices );
 
-        Point< value_t > max_x_point = extreme_points[0].second;
-        Point< value_t > max_y_point = extreme_points[1].second;
+        Point< value_t > max_x_point = vertices[0];
+        Point< value_t > max_y_point = vertices.back();
 
 
         // add two line segments from extremal points of the curve 
@@ -197,10 +218,8 @@ public:
         facets.push_back( Facet({ facet_y, max_y_point }) );
     }
 
-
-    // precondition: pareto function has been called beforehand, facets are
-    // correctly initialized, input point is not dominated by any point on
-    // *this pareto curve
+    /* precondition -> init_facets() and downward_closure() called beforehand
+     */
     value_t point_distance( const Point< value_t >& point ) const {
 
         if ( facets.empty() ){
@@ -236,6 +255,11 @@ public:
         return max_distance;
     }
 
+    /*
+     *
+     * output methods 
+     *
+     */
 
     std::string to_string() const {
         std::stringstream str;
@@ -253,10 +277,16 @@ public:
         std::ofstream str( filename, std::ios::out );
         str << to_string();
     }
+
 };
 
 
-// TODO:change this mayhaps? ~ tag maximizing vertices
+/*
+ *
+ * Functions used for state bound updates
+ *
+ */
+
 template< typename value_t > 
 std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > > &vertices, double eps ){
     if ( vertices.empty() )
@@ -282,10 +312,8 @@ std::vector< Point< value_t > > upper_right_hull( std::vector< Point< value_t > 
         else if ( hull.size() < 2 ) { hull.push_back( pt ); }
         else { 
             size_t i = hull.size() - 1;
-            /* if last vertex of teh hulls lies in CW direction from
-             * pt->hull[i-1], remove the last element of the hull
-             * repeat
-             */
+            // remove vertex if it lies in CW direction from this line segment
+            // or if it is *almost* inside the convex hull (dist < eps/4)
             while ( ( hull.size() >= 2 ) && 
                     ( ( ccw( pt, hull[i - 1], hull[i] ) <= 0 ) || 
                       ( line_segment_distance( pt, hull[i - 1], hull[i] ) < eps / 4 ) ) ){
@@ -317,7 +345,7 @@ Polygon< value_t > hull_union( std::vector< Polygon< value_t > * > curves,
 }
 
 
-/* O(mn) minkowski update */
+/* O(mn) minkowski update, used for testing */
 template< typename value_t >
 Polygon< value_t > naive_minkowski_sum( const std::vector< Polygon< value_t > * > &args,
                                         const std::vector< double > &probs ) {
@@ -332,8 +360,11 @@ Polygon< value_t > naive_minkowski_sum( const std::vector< Polygon< value_t > * 
 }
 
 
-
-
+/*
+ *
+ * Functions used for state-action bound updates
+ *
+ */
 template < typename value_t >
 Polygon< value_t > weighted_minkowski_sum( const std::vector< Polygon< value_t > * > &args,
                              const std::vector< double > &probs ) {

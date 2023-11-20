@@ -42,6 +42,9 @@ struct ExplorationSettings{
     // max trajectory depth
     size_t max_depth;
 
+    // used for trajectory termination
+    value_t depth_constant;
+
     // if enabled, prints trajectories and debugging output while solving
     bool trace;
 
@@ -69,6 +72,7 @@ struct ExplorationSettings{
                           , action_heuristic( ActionSelectionHeuristic::Pareto )
                           , max_episodes( 2000 )
                           , max_depth( 1000 )
+                          , depth_constant( 1000 )
                           , trace( true )
                           , lower_bound_init()
                           , upper_bound_init() 

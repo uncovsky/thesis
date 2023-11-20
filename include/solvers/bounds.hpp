@@ -16,8 +16,10 @@ class Bounds{
     Polygon< value_t > lower_bound;
     Polygon< value_t > upper_bound;
 
-    bool distance_valid = false;
-    value_t distance = 0;
+    bool hausdorff_valid = false;
+    bool euclidean_valid = false;
+    value_t hausdorff_dist = 0;
+    value_t euclidean_dist = 0;
 
 public:
 
@@ -25,7 +27,8 @@ public:
 
     Bounds( const Bounds< value_t > &other ) : lower_bound( other.lower() )
                                              , upper_bound( other.upper() )
-                                             , distance_valid( other.is_valid_distance() ){}
+                                             , hausdorff_valid( other.is_euclidean_valid() )
+                                             , euclidean_valid( other.is_hausdorff_valid() ){}
 
     Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
              const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
@@ -38,6 +41,7 @@ public:
              Polygon< value_t > &&upper ) : lower_bound( std::move( lower ) ),
                                             upper_bound( std::move( upper ) ){}
 
+    /* access to underlying polygons / curves */
     Polygon< value_t > &lower() {
         return lower_bound; 
     }
@@ -54,7 +58,8 @@ public:
         return upper_bound; 
     }
 
-    // helper functions for multiplying/adding scalars/vectors to all entries
+    /* helper functions that execute the same operation on the relevant
+     * polygon / polygons */ 
     void multiply_bounds( value_t mult ) {
         lower_bound.multiply_scalar( mult );
         upper_bound.multiply_scalar( mult );
@@ -78,20 +83,59 @@ public:
         lower_bound.downward_closure( pt );
     }
 
-    bool is_valid_distance() const {
-        return distance_valid;
+    value_t hypervolume( const Point< value_t > &ref_point ) const {
+        return upper_bound.hypervolume( ref_point );
+    }
+    /* 
+     * methods for distance calculations / caching them 
+     */ 
+    bool is_euclidean_valid() const {
+        return euclidean_valid;
+    }
+
+    bool is_hausdorff_valid() const {
+        return hausdorff_valid;
     }
 
     // input conditions -> this is a state bound set by set_bound() function,
     // i.e. facets and downward closure intiialzied
-    value_t bound_distance(){
-        if ( !distance_valid ) {
-            distance = lower_bound.hausdorff_distance( upper_bound );
-            distance_valid = true;
+    value_t hausdorff_distance(){
+        if ( !hausdorff_valid ) {
+            hausdorff_dist = lower_bound.hausdorff_distance( upper_bound );
+            hausdorff_valid = true;
         }
-        return distance;
+        return hausdorff_dist;
     }
 
+    // use minkowski sum trick to eval euclidean distance in linear time
+    // see, i.e. https://cp-algorithms.com/geometry/minkowski.html#distance-between-two-polygons
+    value_t distance() {
+        if ( !euclidean_valid ) {
+
+            size_t dimensions = upper_bound.get_dimension();
+            std::vector< Polygon< value_t > * > ptrs = { &lower_bound, &upper_bound };
+
+            std::vector< value_t > origin ( dimensions, 0.0 );
+
+            Polygon< value_t > result = multiple_minkowski_sum( ptrs, { -1.0, 1.0 } );
+            const auto& vertices = result.get_vertices();
+
+            value_t min_distance = euclidean_distance( vertices[0], origin );
+            for ( size_t i = 1; i < vertices.size(); i++ ) {
+                min_distance = std::min( min_distance, euclidean_distance( vertices[i], origin ) );
+            }
+
+            euclidean_dist = min_distance;
+            euclidean_valid = true;
+        }
+
+        return euclidean_dist;
+
+    }
+
+    /* 
+     * output to stream
+     */
     friend std::ostream &operator<<( std::ostream& os, const Bounds< value_t > &b ) {
         os << "lower bound:\n" << b.lower().to_string() << "\n";
         os << "upper bound:\n" << b.upper().to_string() << "\n";

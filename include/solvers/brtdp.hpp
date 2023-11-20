@@ -69,41 +69,33 @@ class BRTDPSolver{
         
     }
 
+    // hypervolume action selection
     action_t hypervolume_action( const state_t &s, const std::vector< action_t > &avail_actions ) {
         auto [ ref_point , _ ] = env.get_initial_bound();
 
         std::vector< value_t > hypervolumes;
-        value_t total_hypervolume( 0 );
+        std::vector< size_t > maximizing_indices;
 
-        for ( const action_t &act : avail_actions ) {
-            auto upper_bound_vertices = env.get_state_action_bound( s, act ).upper().get_vertices();
-            hypervolumes.push_back( hypervolume_indicator( upper_bound_vertices, ref_point ) );
+        value_t max_hv( 0 );
 
-            /*
+        for ( size_t i = 0; i < avail_actions.size(); i++ ){
+            auto &bound = env.get_state_action_bound( s, avail_actions[i] );
+            
+            value_t hv = bound.hypervolume( ref_point );
 
-            std::cout << "  Action: " << act << "\n";
-            for ( auto pt : upper_bound_vertices ) {
-                for ( auto dim : pt ) {
-                    std::cout << "      " << dim << ", ";
-                }
-                std::cout << "\n";
+            if ( hv > max_hv ) {
+                max_hv = hv;
+                maximizing_indices = { i };
             }
 
-            std::cout << "HV: " << hypervolumes.back() << "\n";
-
-            */
-
-            total_hypervolume += hypervolumes.back();
+            else if ( hv == max_hv ) {
+                maximizing_indices.push_back( i );
+            }
         }
 
-        std::map< action_t, value_t > hv_distribution;
-
-        size_t i = 0;
-        for ( const action_t &act : avail_actions ) {
-            hv_distribution[act] = ( total_hypervolume == 0 ) ? 1.0 / hypervolumes.size() : hypervolumes[i++] / total_hypervolume;
-        }
-
-        return gen.sample_distribution( hv_distribution );
+        size_t idx = gen.sample_uniformly( maximizing_indices );
+        return avail_actions[idx];
+        
     }
     /*
      * SUCCESSOR HEURISTICS 
@@ -116,7 +108,7 @@ class BRTDPSolver{
         std::vector< value_t > diff_values;
         for ( const auto &[ s, prob ] : transition ) {
             Bounds< value_t > &bound = env.get_state_bound( s );
-            diff_values.push_back( bound.bound_distance() * prob );
+            diff_values.push_back( bound.hausdorff_distance() * prob );
         }
 
         return diff_values;
@@ -213,7 +205,7 @@ class BRTDPSolver{
              */
             diff_sum *= discount_pow;
 
-            if ( ( diff_sum < config.precision / 1000 ) || ( iter >= config.max_depth ) ) {
+            if ( ( diff_sum < config.precision / config.depth_constant ) || ( iter >= config.max_depth ) ) {
                 terminated = true;
             }
 
@@ -301,14 +293,14 @@ public:
 
         size_t episode = 0;
 
-        while ( start_bound.bound_distance() >= config.precision ) {
+        while ( start_bound.hausdorff_distance() >= config.precision ) {
 
             TrajectoryStack trajectory = sample_trajectory();
             update_along_trajectory( trajectory, starting_state );
 
             if ( config.trace ){
                 logs << "episode #" << episode << ":\n";
-                logs << "distance: " << start_bound.bound_distance() << ".\n";
+                logs << "distance: " << start_bound.hausdorff_distance() << ".\n";
                 logs << start_bound;
 
                 std::cout << "episode #" << episode << "\n.";
@@ -325,7 +317,7 @@ public:
         auto finish_time = std::chrono::steady_clock::now();
         std::chrono::duration< double > exec_time = finish_time - start_time;
         VerificationResult< value_t > res{  env.get_update_num() // num of updates
-                                       , start_bound.bound_distance() < config.precision // bool converged
+                                       , start_bound.hausdorff_distance() < config.precision // bool converged
                                        , start_bound 
                                        , exec_time.count()
                                        , env.num_states_explored() }; // num of explored states
