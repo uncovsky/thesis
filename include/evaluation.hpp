@@ -54,6 +54,26 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
                       didnt_converge };
 }
 
+
+void output_curve( const std::string &filename,
+                   const ExplorationSettings< double > &config,
+                   const VerificationResult< double > &res ){
+
+    std::ofstream curve( "../out/" + config.filename + "_curve.txt", std::fstream::app );
+    auto curve_obj = res.result_bound.lower();
+    
+    std::vector< double > multipliers = { 1, 1 };
+    if ( config.directions[0] == OptimizationDirection::MINIMIZE ) { multipliers[0] = -1; }
+    if ( config.directions[1] == OptimizationDirection::MINIMIZE ) { multipliers[1] = -1; }
+
+    curve_obj.multiply_vector( multipliers );
+
+    curve << curve_obj.to_string() << std::endl;
+    curve.close();
+}
+
+
+
 // helper function for evaluation
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
@@ -90,26 +110,26 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     // destination csv file
     std::ofstream out( "../out/results.csv", std::fstream::app );
     std::ofstream expl( "../out/explored.csv", std::fstream::app );
-    std::ofstream curve( "../out/" + config.filename + "_brtdp_curve.txt", std::fstream::app );
-    std::ofstream curve_chvi( "../out/" + config.filename + "_chvi_curve.txt", std::fstream::app);
 
     out << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.time_mean << ";" << brtdp_logs.time_std << ";";
     out << brtdp_logs.updates_mean << ";" << brtdp_logs.updates_std << ";";
     out << chvi_logs.time_mean << ";" << chvi_logs.updates_mean << "\n";
     expl << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.explored_mean << ";" << brtdp_logs.explored_std << "\n";
-        
-    // using the first result for now, could check convergence as well
-    for ( size_t i = 0; i < brtdp_results.size(); i++ ) {
-        curve << "Curve - run " << i << "\n" << brtdp_results[i].result_bound.lower().to_string() << std::endl;
-        curve_chvi << "Curve - run " << i << "\n" << chvi_results[i].result_bound.lower().to_string() << std::endl;
+
+    for ( size_t i = 0; i < repeat; i++ ) {
+        output_curve( config.filename + "_brtdp", config, brtdp_results[i] );
+        output_curve( config.filename + "_chvi", config, chvi_results[i] );
+
     }
+        
 
     out.close();
-    curve.close();
-    curve_chvi.close();
     expl.close();
 }
-void eval_uav( const std::string &dir, double tau ){
+
+
+
+void eval_uav( double tau ){
 
     PrismParser parser;
 
@@ -122,19 +142,36 @@ void eval_uav( const std::string &dir, double tau ){
                       10 );
     */
 
-    auto uav5 = parser.parse_model( "../benchmarks/uav/out.tra",
+    auto uav5 = parser.parse_model( "../benchmarks/uav/uav5.tra",
                       {
-                      "../benchmarks/uav/out1.trew",
-                      "../benchmarks/uav/out2.trew"
+                      "../benchmarks/uav/uav51.trew",
+                      "../benchmarks/uav/uav52.trew"
                       },
                       0 );
 
-    auto taskgraph = parser.parse_model( "../benchmarks/pareto_taskgraph/out.tra",
+    auto uav20 = parser.parse_model( "../benchmarks/uav/uav20.tra",
                       {
-                      "../benchmarks/pareto_taskgraph/rew1.trew",
-                      "../benchmarks/pareto_taskgraph/rew2.trew"
+                      "../benchmarks/uav/uav201.trew",
+                      "../benchmarks/uav/uav202.trew"
                       },
                       0 );
+
+
+    auto ptaskgraph5 = parser.parse_model( "../benchmarks/pareto_taskgraph/taskgraph5.tra",
+                      {
+                      "../benchmarks/pareto_taskgraph/taskgraph51.trew",
+                      "../benchmarks/pareto_taskgraph/taskgraph52.trew"
+                      },
+                      0 );
+    
+    /*
+    auto ptaskgraph10 = parser.parse_model( "../benchmarks/pareto_taskgraph/taskgraph10.tra",
+                      {
+                      "../benchmarks/pareto_taskgraph/taskgraph102.trew",
+                      "../benchmarks/pareto_taskgraph/taskgraph102.trew"
+                      },
+                      0 );
+    */
 
     auto teamform2 = parser.parse_model( "../benchmarks/teamform/teamform2.tra",
                                          {
@@ -163,7 +200,9 @@ void eval_uav( const std::string &dir, double tau ){
 
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
-    run_benchmark( &MDP, config );
+    run_benchmark( &uav5, config );
+
+    run_benchmark( &uav20, config );
 
     config.filename = "teamform2";
     config.discount_param = 0.9;
@@ -173,10 +212,25 @@ void eval_uav( const std::string &dir, double tau ){
     run_benchmark( &teamform2, config );
     config.filename = "teamform3";
     run_benchmark( &teamform3, config );
-    //run_benchmark( &taskgraph, config );
+
+    config.depth_constant = 10000;
+    config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
+
+    config.max_depth = 10000;
+    config.lower_bound_init = { -20, -20 };
+    config.upper_bound_init = { 0, 0 };
+    config.max_episodes = 0;
+
+    config.filename = "pareto_taskgraph5";
+    run_benchmark( &ptaskgraph5, config );
+
+    /*
+    config.filename = "pareto_taskgraph10";
+    run_benchmark( &ptaskgraph10, config );
+    */
 }
 
-void eval_racetrack( const std::string &dir, double tau ){
+void eval_racetrack( double tau ){
     
     ExplorationSettings< double > config;
 
@@ -219,7 +273,7 @@ void eval_racetrack( const std::string &dir, double tau ){
 }
 
 
-void eval_treasure( const std::string &dir="" ){
+void eval_treasure(){
 
     ExplorationSettings< double > config;
     config.action_heuristic = ActionSelectionHeuristic::Pareto;
@@ -246,7 +300,7 @@ void eval_treasure( const std::string &dir="" ){
     run_benchmark( &dst_convex, config );
 }
 
-void eval_frozenlake( const std::string &dir ) {
+void eval_frozenlake() {
     ExplorationSettings< double > config;
     config.max_depth = 1000;
     config.max_episodes = 10000;
@@ -296,8 +350,7 @@ void eval_frozenlake( const std::string &dir ) {
     run_benchmark( &lake2, config );
 }
 
-void evaluate_benchmarks( const std::string &dir="", double tau ) {
-    eval_uav( dir, tau );
-    eval_racetrack( dir, tau );
+void evaluate_benchmarks( double tau ) {
+    eval_uav( tau );
 }
 

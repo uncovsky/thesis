@@ -218,22 +218,29 @@ void PrismParser::parse_transition_file( const std::string &filename ){
         throw ParseError( 1, "Transition file" + filename + " does not exist." );
     }
 
-    // reset all associated data
-    line_num = 1;
     reward_dimension = 0;
     transition_info.clear();
     reward_info.clear();
 
+    line_num = 0;
+    bool first_noncommented = true;
+
     while ( std::getline( input_str, line ) ) {
-        // set iterators
-        if ( !ignore_line( line ) ) {
+
+        line_num++;
+
+        if ( ignore_line( line ) ) { continue; }
+
+        // ignore first line that is not a comment (contains metadata)
+        else if ( first_noncommented ) { first_noncommented = false; continue; }
+    
+        else {
             curr = line.begin();
             end  = line.end();
-            // match transition
             match_transition();
-        
+
         }
-        line_num++;
+
     }
 
     for ( const auto &[ id, data ] : transition_info ){
@@ -252,15 +259,26 @@ void PrismParser::parse_reward_file( const std::string &filename ){
         throw ParseError( 1, "Reward file" + filename + " does not exist." );
     }
 
-    line_num = 1;
+
+    line_num = 0;
+    bool first_noncommented = true;
 
     while ( std::getline( input_str, line ) ) {
-        if ( !ignore_line( line ) ) {
+
+        line_num++;
+
+        if ( ignore_line( line ) ) { continue; }
+
+        // ignore first line that is not a comment (contains metadata)
+        else if ( first_noncommented ) { first_noncommented = false; continue; }
+    
+        else {
             curr = line.begin();
             end  = line.end();
             match_reward();
+
         }
-        line_num++;
+
     }
 
     // set dimension for next file

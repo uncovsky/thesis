@@ -205,7 +205,8 @@ class BRTDPSolver{
              */
             diff_sum *= discount_pow;
 
-            if ( ( diff_sum < config.precision / config.depth_constant ) || ( iter >= config.max_depth ) ) {
+            if ( ( config.depth_constant > 0 ) && ( diff_sum < config.precision / config.depth_constant ) || 
+                 ( config.max_depth > 0 ) && ( iter >= config.max_depth ) ) {
                 terminated = true;
             }
 
@@ -310,9 +311,11 @@ public:
             start_bound = env.get_state_bound( starting_state );
 
             episode++;
-            if ( episode >= config.max_episodes ) { break; }
+            // if max episodes is set to 0, no limit.
+            if ( ( config.max_episodes > 0 ) && ( episode >= config.max_episodes ) )  { break; }
         }
 
+        env.write_exploration_logs( config.filename, true );
         
         auto finish_time = std::chrono::steady_clock::now();
         std::chrono::duration< double > exec_time = finish_time - start_time;

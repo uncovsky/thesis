@@ -27,6 +27,6 @@ int main() {
 
 
     for ( double tau : { 500, 750, 1000 } ) {
-        evaluate_benchmarks( "../out/", tau );
+        evaluate_benchmarks( tau );
     }
 }
