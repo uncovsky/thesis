@@ -8,7 +8,7 @@
 
 enum class ActionSelectionHeuristic { Hypervolume, 
                                       Pareto, 
-                                      Uniform };
+                                      Hausdorff };
 
 enum class OptimizationDirection { MAXIMIZE, 
                                    MINIMIZE };

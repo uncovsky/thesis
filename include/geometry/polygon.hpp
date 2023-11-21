@@ -42,6 +42,7 @@ class Polygon {
     std::vector< Point< value_t > > vertices;
     std::vector< Facet > facets;
 
+
 public:
 
     Polygon( ) : vertices( ), facets( ) {  }
@@ -246,13 +247,19 @@ public:
      * in upper_polygon entirely and facets of *this are initialized properly
      * ( convex hull call preceded this )
      */
-    value_t hausdorff_distance( const Polygon& upper_polygon ) {
+    std::pair< value_t, std::vector< Point< value_t > > > hausdorff_distance( const Polygon& upper_polygon ) {
         value_t max_distance = 0;
+        std::vector< Point< value_t > > maximizing_vertices;
 
         for ( const auto &v : upper_polygon.get_vertices() ) {
-            max_distance = std::max( max_distance, point_distance( v ) );
+            value_t dist = point_distance( v );
+            if ( dist > max_distance ) { 
+                max_distance = dist;
+                maximizing_vertices = { v };
+            }
+            else if ( dist == max_distance ) { maximizing_vertices.push_back( v ); }
         }
-        return max_distance;
+        return std::make_pair( max_distance, maximizing_vertices );
     }
 
     /*

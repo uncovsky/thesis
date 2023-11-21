@@ -1,4 +1,3 @@
-#include "geometry/pareto.hpp"
 #include "geometry/polygon.hpp"
 
 #include "models/env_wrapper.hpp"

@@ -164,15 +164,12 @@ void eval_uav( double tau ){
                       },
                       0 );
     
-    /*
     auto ptaskgraph10 = parser.parse_model( "../benchmarks/pareto_taskgraph/taskgraph10.tra",
                       {
                       "../benchmarks/pareto_taskgraph/taskgraph102.trew",
                       "../benchmarks/pareto_taskgraph/taskgraph102.trew"
                       },
                       0 );
-    */
-
     auto teamform2 = parser.parse_model( "../benchmarks/teamform/teamform2.tra",
                                          {
                                             "../benchmarks/teamform/teamform21.trew",
@@ -185,23 +182,26 @@ void eval_uav( double tau ){
                                             "../benchmarks/teamform/teamform32.trew"
                                          }, 0 );
 
+    // basic config for benchmarks
     ExplorationSettings< double > config;
-   // run_benchmark( &resource, config );
-
-    config.action_heuristic = ActionSelectionHeuristic::Pareto;
-    config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.max_depth = 1000;
-    config.filename = "uav5";
     config.max_episodes = 30000;
-    config.discount_param = 1;
     config.trace = true;
     config.precision = 0.01;
+    config.discount_param = 1;
     config.depth_constant = tau;
 
+    config.action_heuristic = ActionSelectionHeuristic::Hausdorff;
+   // run_benchmark( &resource, config );
+
+    config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
+    config.filename = "uav5";
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
+
     run_benchmark( &uav5, config );
 
+    config.filename = "uav20";
     run_benchmark( &uav20, config );
 
     config.filename = "teamform2";
@@ -213,10 +213,8 @@ void eval_uav( double tau ){
     config.filename = "teamform3";
     run_benchmark( &teamform3, config );
 
-    config.depth_constant = 10000;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
 
-    config.max_depth = 10000;
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
     config.max_episodes = 0;
@@ -224,10 +222,8 @@ void eval_uav( double tau ){
     config.filename = "pareto_taskgraph5";
     run_benchmark( &ptaskgraph5, config );
 
-    /*
     config.filename = "pareto_taskgraph10";
     run_benchmark( &ptaskgraph10, config );
-    */
 }
 
 void eval_racetrack( double tau ){
@@ -248,13 +244,13 @@ void eval_racetrack( double tau ){
     config.filename = "racetrack-easy";
     config.trace = true;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
-    run_benchmark( &easy, config );
+    //run_benchmark( &easy, config );
 
     config.lower_bound_init = { -1000, -1000 };
     config.upper_bound_init = { 0, 0 };
     config.filename = "racetrack-ring";
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
-    run_benchmark( &easy, config );
+    //run_benchmark( &easy, config );
 
     config.max_depth = 3000;
     config.lower_bound_init = { -1000, -1000 };
@@ -351,6 +347,7 @@ void eval_frozenlake() {
 }
 
 void evaluate_benchmarks( double tau ) {
+    eval_racetrack( tau );
     eval_uav( tau );
 }
 

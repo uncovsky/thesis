@@ -97,6 +97,35 @@ class BRTDPSolver{
         return avail_actions[idx];
         
     }
+
+    action_t furthest_action_selection( const state_t &s, const std::vector< action_t > &avail_actions ){
+
+        std::vector< Point< value_t > > furthest_pts = env.get_state_bound( s ).get_furthest_points();
+
+        std::set< action_t > maximizing_actions;
+
+        for ( const action_t &a : avail_actions ) {
+            std::vector< Point< value_t > > &sa_points = env.get_state_action_bound( s, a ).upper().get_vertices();
+
+            bool opt = false;
+            for ( const auto &pt : furthest_pts ) {
+
+                if ( std::binary_search( sa_points.begin(), 
+                                         sa_points.end(), 
+                                         pt, 
+                                         []( const auto &x, const auto &y ){ return x[0] > y[0]; }) )  
+                {
+                    maximizing_actions.insert( a );
+                    opt = true;
+                }
+
+                if ( opt ) { break; }
+            }
+        }
+
+        // choose uniformly from these actions
+        return gen.sample_uniformly( maximizing_actions );
+    }
     /*
      * SUCCESSOR HEURISTICS 
      */
@@ -125,8 +154,10 @@ class BRTDPSolver{
             return hypervolume_action( s, avail_actions );
         }
 
-        return gen.sample_uniformly( avail_actions );
+        return furthest_action_selection( s, avail_actions );
     }
+
+    
 
     /*
      * samples an MDP trajectory using specified action/successor heuristics

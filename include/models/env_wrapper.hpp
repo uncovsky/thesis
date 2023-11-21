@@ -5,7 +5,6 @@
 #include <sstream>
 #include <set>
 #include "geometry/polygon.hpp"
-#include "geometry/pareto.hpp"
 #include "models/environment.hpp"
 #include "solvers/config.hpp"
 #include "utils/eigen_types.hpp"

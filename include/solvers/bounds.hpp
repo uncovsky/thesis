@@ -18,8 +18,11 @@ class Bounds{
 
     bool hausdorff_valid = false;
     bool euclidean_valid = false;
+
     value_t hausdorff_dist = 0;
     value_t euclidean_dist = 0;
+
+    std::vector< Point< value_t > > furthest_points = {};
 
 public:
 
@@ -101,10 +104,20 @@ public:
     // i.e. facets and downward closure intiialzied
     value_t hausdorff_distance(){
         if ( !hausdorff_valid ) {
-            hausdorff_dist = lower_bound.hausdorff_distance( upper_bound );
+            auto res = lower_bound.hausdorff_distance( upper_bound );
+            
+            hausdorff_dist = res.first;
+            furthest_points = res.second;
             hausdorff_valid = true;
         }
         return hausdorff_dist;
+    }
+    
+    std::vector< Point< value_t > > get_furthest_points() {
+        if ( !hausdorff_valid ) {
+            hausdorff_distance();
+        }
+        return furthest_points;
     }
 
     // use minkowski sum trick to eval euclidean distance in linear time
