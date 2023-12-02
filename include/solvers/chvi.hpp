@@ -102,9 +102,12 @@ public:
 
             sweeps++;
             if ( ( config.max_episodes > 0 ) && ( sweeps >= config.max_episodes ) )  { break; }
-        }
 
-        env.write_exploration_logs( config.filename + "_chvi", true );
+            auto finish_time = std::chrono::steady_clock::now();
+            std::chrono::duration< double > exec_time = finish_time - start_time;
+
+            if ( exec_time.count() > config.max_seconds ) { break; }
+        }
 
         auto finish_time = std::chrono::steady_clock::now();
         auto start_bound = env.get_state_bound( starting_state );
@@ -116,8 +119,6 @@ public:
                                        , exec_time.count()
                                        , env.num_states_explored() }; // num of explored states
                                         
-
-        env.write_exploration_logs( "test_chvi", true );
         return res;
     }
 

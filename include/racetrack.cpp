@@ -61,11 +61,11 @@ Racetrack::reward_t Racetrack::get_reward( const VehicleState &pos,
         return { 0, 0 };
     }
 
-    // return 1 + squared sum of velocities as fuel reward and 1 time rew
-    double velocity_val = std::abs( pos.velocity.first + action.first ) + std::abs( pos.velocity.second + action.second );
+    // return 1 + squared sum of velocities as fuel reward
+    double velocity_val = std::pow( pos.velocity.first, 2) + std::pow( pos.velocity.second, 2 );
 
-    // always lose at least one fuel and time
-    return { std::pow( velocity_val, 2 ) + 1, 1 };
+    // always lose at least one fuel and one tick each time
+    return { velocity_val + 1, 1 };
 }
 
 std::pair< Racetrack::reward_t, Racetrack::reward_t > Racetrack::reward_range() const {

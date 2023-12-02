@@ -141,7 +141,7 @@ public:
         vertices = std::move( new_vertices );
     }
 
-    // calculates the hypervolume of this polygon w.r.t. ref_point
+   // calculates the hypervolume of this polygon w.r.t. ref_point
     // again assumes that this is a proper pareto curve, sorted, etc.
     value_t hypervolume( const Point< value_t >&ref_point ) const {
 
@@ -159,12 +159,13 @@ public:
         value_t hv = ( vertices[0][0] - ref_point[0] ) * ( vertices[0][1] - ref_point[1] );
 
         for ( size_t i = 1; i < vertices.size(); i++ ) {
-            // sum up piece of the polygon -> a rectangle and a triangle
+            // sum up a piece of the polygon
             hv += ( vertices[i][0] - ref_point[0] + 0.5 * ( vertices[i-1][0] - vertices[i][0] ) ) * ( vertices[i][1] - vertices[i-1][1] );
         }
 
         return hv;
     }
+
 
 
 

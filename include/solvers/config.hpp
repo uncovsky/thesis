@@ -39,6 +39,9 @@ struct ExplorationSettings{
     //  ( or sweeps of chvi )
     size_t max_episodes;
 
+    // max time per model
+    double max_seconds;
+
     // max trajectory depth
     size_t max_depth;
 
@@ -51,6 +54,7 @@ struct ExplorationSettings{
     // points to be used as initial lower/upper bounds on obj
     // if empty the bounds are initialized from min/max infinite discounted
     // reward.
+    // these MUST be set if discount param = 1
     Point< value_t > lower_bound_init;
     Point< value_t > upper_bound_init;
 
@@ -70,6 +74,7 @@ struct ExplorationSettings{
                           , discount_param( 0.9 )
                           , directions( { OptimizationDirection::MAXIMIZE, OptimizationDirection::MAXIMIZE } )
                           , action_heuristic( ActionSelectionHeuristic::Pareto )
+                          , max_seconds( 60 )
                           , max_episodes( 2000 )
                           , max_depth( 1000 )
                           , depth_constant( 1000 )

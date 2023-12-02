@@ -6,7 +6,7 @@
 #include <map>
 
 /* 
- *  general environment interface to use when interacting with the solver
+ *  environment interface to use when interacting with the solver
  *  (through environment handler object)
  */
 
@@ -23,6 +23,7 @@ public:
 
 
     virtual state_t get_current_state() const = 0;
+
     virtual std::map< state_t, double > get_transition( const state_t &state, 
                                                        const action_t &action) const = 0;
     virtual std::vector< action_t > get_actions(const state_t &state) const = 0;
@@ -34,6 +35,7 @@ public:
     // enable potential reseeding of the envs prng, 0 signals default random init
     virtual Observation reset(unsigned seed=0) = 0;
 
+    // name of the env
     virtual std::string name() const = 0;
 
 };

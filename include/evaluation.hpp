@@ -4,8 +4,10 @@
 #include "benchmarks/sea_treasure.hpp"
 #include "benchmarks/racetrack.hpp"
 #include "benchmarks/resource_gathering.hpp"
+
 #include "models/environment.hpp"
 #include "models/env_wrapper.hpp"
+
 #include "solvers/brtdp.hpp"
 #include "solvers/chvi.hpp"
 #include "solvers/config.hpp"
@@ -16,6 +18,7 @@
 #include <iostream>
 #include <string>
 
+// helper struct for outputting to csv
 struct LogOutput {
     double time_mean, updates_mean, explored_mean;
     double time_std, updates_std, explored_std;
@@ -32,7 +35,7 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
     double res_size = static_cast< double > ( results.size() );
 
     for ( const auto& res : results ) {
-        if ( !res.converged ) { didnt_converge++; continue; }
+        if ( !res.converged ) { didnt_converge++; }
         time_mean += static_cast< double > (res.time_to_convergence) / res_size;
         updates_mean += static_cast< double > (res.update_number) / res_size;
         explored_mean += static_cast< double > (res.states_explored) / res_size;
@@ -40,7 +43,6 @@ LogOutput aggregate_results( const std::vector< VerificationResult< value_t > > 
 
     if ( results.size() > 1 )
     for ( const auto& res : results ) {
-        if ( !res.converged ) { continue; }
         time_std += std::pow( ( static_cast< double > ( res.time_to_convergence ) - time_mean ), 2 ) / ( res_size - 1 );
         updates_std += std::pow( ( static_cast< double > ( res.update_number ) - updates_mean ), 2 ) / ( res_size - 1 );
         explored_std += std::pow( ( static_cast< double > ( res.states_explored ) - explored_mean ), 2 ) / ( res_size - 1 );
@@ -59,7 +61,7 @@ void output_curve( const std::string &filename,
                    const ExplorationSettings< double > &config,
                    const VerificationResult< double > &res ){
 
-    std::ofstream curve( "../out/" + config.filename + "_curve.txt", std::fstream::app );
+    std::ofstream curve( "../out/" + filename + "_curve.txt", std::fstream::app );
     auto curve_obj = res.result_bound.lower();
     
     std::vector< double > multipliers = { 1, 1 };
@@ -78,7 +80,7 @@ void output_curve( const std::string &filename,
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=3 ){
+                    size_t repeat=5 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -114,7 +116,9 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
     out << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.time_mean << ";" << brtdp_logs.time_std << ";";
     out << brtdp_logs.updates_mean << ";" << brtdp_logs.updates_std << ";";
     out << chvi_logs.time_mean << ";" << chvi_logs.updates_mean << "\n";
-    expl << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.explored_mean << ";" << brtdp_logs.explored_std << "\n";
+    expl << config.filename << ";" << chvi_logs.explored_mean << ";";
+    expl << brtdp_logs.explored_mean << ";" << brtdp_logs.explored_std << ";";
+    expl << brtdp_logs.didnt_converge << ";" << chvi_logs.didnt_converge << "\n";
 
     for ( size_t i = 0; i < repeat; i++ ) {
         output_curve( config.filename + "_brtdp", config, brtdp_results[i] );
@@ -129,18 +133,9 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
 
 
 
-void eval_uav( double tau ){
+void eval_uav( double tau, ActionSelectionHeuristic heuristic ){
 
     PrismParser parser;
-
-    /*
-    auto resource = parser.parse_model( "../benchmarks/res.tra",
-                      {
-                      "../benchmarks/res2.trew",
-                      "../benchmarks/res3.trew"
-                      },
-                      10 );
-    */
 
     auto uav5 = parser.parse_model( "../benchmarks/uav/uav5.tra",
                       {
@@ -164,12 +159,6 @@ void eval_uav( double tau ){
                       },
                       0 );
     
-    auto ptaskgraph10 = parser.parse_model( "../benchmarks/pareto_taskgraph/taskgraph10.tra",
-                      {
-                      "../benchmarks/pareto_taskgraph/taskgraph102.trew",
-                      "../benchmarks/pareto_taskgraph/taskgraph102.trew"
-                      },
-                      0 );
     auto teamform2 = parser.parse_model( "../benchmarks/teamform/teamform2.tra",
                                          {
                                             "../benchmarks/teamform/teamform21.trew",
@@ -181,58 +170,74 @@ void eval_uav( double tau ){
                                             "../benchmarks/teamform/teamform31.trew",
                                             "../benchmarks/teamform/teamform32.trew"
                                          }, 0 );
+    
+    auto taskgraph30 = parser.parse_model( "../benchmarks/taskgraph/taskgraph30.tra",
+                      {
+                      "../benchmarks/taskgraph/taskgraph301.trew",
+                      "../benchmarks/taskgraph/taskgraph302.trew"
+                      },
+                      0 );
 
     // basic config for benchmarks
     ExplorationSettings< double > config;
-    config.max_depth = 1000;
-    config.max_episodes = 30000;
-    config.trace = true;
+    config.max_depth = 0;
+    config.max_episodes = 0;
+    config.trace = false;
     config.precision = 0.01;
-    config.discount_param = 1;
     config.depth_constant = tau;
+    config.max_seconds = 90;
 
-    config.action_heuristic = ActionSelectionHeuristic::Hausdorff;
-   // run_benchmark( &resource, config );
-
+    // use default init
+    config.lower_bound_init = {};
+    config.upper_bound_init = {};
+    config.action_heuristic = heuristic;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
-    config.filename = "uav5";
-    config.lower_bound_init = { -20, -20 };
-    config.upper_bound_init = { 0, 0 };
 
+    // 0.99 gamma for uav
+    config.discount_param = 0.99;
+
+    config.filename = "uav5";
     run_benchmark( &uav5, config );
 
     config.filename = "uav20";
     run_benchmark( &uav20, config );
 
-    config.filename = "teamform2";
+    // 0.9 gamma for all other benchmarks & lower time
     config.discount_param = 0.9;
+
+    config.filename = "teamform2";
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MAXIMIZE };
+
+    /*
     config.lower_bound_init = { 0, 0 };
     config.upper_bound_init = { 20, 20 };
+    */
     run_benchmark( &teamform2, config );
     config.filename = "teamform3";
     run_benchmark( &teamform3, config );
 
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
 
+    /*
     config.lower_bound_init = { -20, -20 };
     config.upper_bound_init = { 0, 0 };
-    config.max_episodes = 0;
+    */
 
     config.filename = "pareto_taskgraph5";
     run_benchmark( &ptaskgraph5, config );
 
-    config.filename = "pareto_taskgraph10";
-    run_benchmark( &ptaskgraph10, config );
+    config.filename = "taskgraph30";
+    run_benchmark( &taskgraph30, config );
 }
 
-void eval_racetrack( double tau ){
+void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
     
     ExplorationSettings< double > config;
 
-    config.action_heuristic = ActionSelectionHeuristic::Pareto;
-    config.max_depth = 500;
-    config.max_episodes = 10000;
+    config.action_heuristic = heuristic;
+    config.max_depth = 1000;
+    config.max_seconds = 300;
+    config.max_episodes = 0;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.discount_param = 1;
     config.precision = 0.01;
@@ -242,22 +247,17 @@ void eval_racetrack( double tau ){
 
     Racetrack easy;
     config.filename = "racetrack-easy";
-    config.trace = true;
+    config.trace = false;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
-    //run_benchmark( &easy, config );
+    run_benchmark( &easy, config );
 
-    config.lower_bound_init = { -1000, -1000 };
-    config.upper_bound_init = { 0, 0 };
     config.filename = "racetrack-ring";
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
-    //run_benchmark( &easy, config );
+    run_benchmark( &easy, config );
 
-    config.max_depth = 3000;
-    config.lower_bound_init = { -1000, -1000 };
-    config.upper_bound_init = { 0, 0 };
-    config.filename = "racetrack-hard-3000";
+    config.filename = "racetrack-hard";
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
-    run_benchmark( &easy, config, 2 );
+    run_benchmark( &easy, config );
     /*
     config.filename = "racetrack-hard-1000";
     config.max_depth = 1000;
@@ -266,24 +266,22 @@ void eval_racetrack( double tau ){
     config.max_depth = 10000;
     run_benchmark( &easy, config, 2 );
     */
+
 }
 
 
-void eval_treasure(){
+void eval_treasure( double tau, ActionSelectionHeuristic heuristic ){
 
     ExplorationSettings< double > config;
-    config.action_heuristic = ActionSelectionHeuristic::Pareto;
+    config.action_heuristic = heuristic;
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
-    config.max_depth = 5000;
-    config.max_episodes = 10000;
-    config.discount_param = 0.99;
+    config.max_depth = 50;
+    // until convergence
+    config.max_episodes = 0;
+    config.depth_constant = tau;
+    config.discount_param = 0.95;
     config.trace = false;
     config.precision = 0.01;
-
-    // at least no treasure and <100 fuel spent
-    config.lower_bound_init = { 0, -100 };
-    // at most this amount of treasure and <0 fuel lost
-    config.upper_bound_init = { 125, 0 };
 
 
     DeepSeaTreasure dst, dst_convex;
@@ -296,17 +294,17 @@ void eval_treasure(){
     run_benchmark( &dst_convex, config );
 }
 
-void eval_frozenlake() {
+void eval_frozenlake( double tau, ActionSelectionHeuristic heuristic ){
     ExplorationSettings< double > config;
-    config.max_depth = 1000;
-    config.max_episodes = 10000;
+    config.action_heuristic = heuristic;
+    config.max_depth = 100;
+    config.max_episodes = 100000;
     config.discount_param = 0.95;
     config.trace = false;
     config.precision = 0.01;
+    config.depth_constant = tau;
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
     config.filename = "lake-easy";
-    config.lower_bound_init = { 0, -3 };
-    config.upper_bound_init = { 1, 0 };
 
     FrozenLake lake;
 
@@ -314,8 +312,8 @@ void eval_frozenlake() {
 
     PRNG gen;
     std::set< Coordinates > randpits;
-    config.discount_param = 0.99;
-    FrozenLake lake2( 25, 25, {
+    config.discount_param = 0.95;
+    FrozenLake lake2( 15, 15, {
                        Coordinates(1, 5),
                        Coordinates(1, 8),
                        Coordinates(1, 12),
@@ -346,8 +344,10 @@ void eval_frozenlake() {
     run_benchmark( &lake2, config );
 }
 
-void evaluate_benchmarks( double tau ) {
-    eval_racetrack( tau );
-    eval_uav( tau );
+void evaluate_benchmarks( double tau, ActionSelectionHeuristic heuristic ) {
+    // eval_treasure( tau, heuristic );
+    eval_uav( tau , heuristic );
+    // eval_racetrack( tau , heuristic );
+    // eval_frozenlake( tau, heuristic );
 }
 

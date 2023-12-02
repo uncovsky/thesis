@@ -71,9 +71,8 @@ class BRTDPSolver{
 
     // hypervolume action selection
     action_t hypervolume_action( const state_t &s, const std::vector< action_t > &avail_actions ) {
-        auto [ ref_point , _ ] = env.get_initial_bound();
+        auto [ ref_point , _ ] = env.min_max_discounted_reward();
 
-        std::vector< value_t > hypervolumes;
         std::vector< size_t > maximizing_indices;
 
         value_t max_hv( 0 );
@@ -344,10 +343,15 @@ public:
             episode++;
             // if max episodes is set to 0, no limit.
             if ( ( config.max_episodes > 0 ) && ( episode >= config.max_episodes ) )  { break; }
-        }
 
-        env.write_exploration_logs( config.filename, true );
-        
+            auto finish_time = std::chrono::steady_clock::now();
+            std::chrono::duration< double > exec_time = finish_time - start_time;
+
+            if ( exec_time.count() > config.max_seconds ) { break; }
+
+        }
+        // env.write_exploration_logs( "../out/" + config.filename + "_brtdp" , false );
+    
         auto finish_time = std::chrono::steady_clock::now();
         std::chrono::duration< double > exec_time = finish_time - start_time;
         VerificationResult< value_t > res{  env.get_update_num() // num of updates

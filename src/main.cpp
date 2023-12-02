@@ -24,8 +24,8 @@ int main() {
     out.close();
     expl.close();
 
-
-    for ( double tau : { 500, 750, 1000 } ) {
-        evaluate_benchmarks( tau );
+    for ( double tau : { 50 } ) {
+        for ( ActionSelectionHeuristic heuristic : { ActionSelectionHeuristic::Hausdorff, ActionSelectionHeuristic::Pareto } )
+        evaluate_benchmarks( tau, heuristic );
     }
 }

@@ -104,11 +104,11 @@ void FrozenLake::set_hyperparams( double prob ) {
 
 FrozenLake::FrozenLake() : height( 9 )
                          , width( 9 )
-                         , pits( { Coordinates( 0, 6 )
-                                 , Coordinates( 1, 7 )
-                                 , Coordinates( 3, 1 )
+                         , pits( { Coordinates( 6, 0 )
+                                 , Coordinates( 7, 1 )
+                                 , Coordinates( 1, 3 )
                                  , Coordinates( 3, 3 )
-                                 , Coordinates( 7, 5 ) } )
+                                 , Coordinates( 5, 7 ) } )
                          , current_state( 0, 0 )
                          , initial_state( 0, 0 )
 {

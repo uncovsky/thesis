@@ -9,15 +9,13 @@
 #include "solvers/config.hpp"
 #include "utils/eigen_types.hpp"
 #include "utils/prng.hpp"
+
 /* this class is used to interact with the underlying environment, recording
  * statistics, simulation, logging, etc.
  * reward_t to the actual reward type ( so std::vector< double > etc. )
  * while value_t will be equal to the type used to represent the reward
  * components for the underlying reward, so for example double 
- *
- * templating the value/reward can be useful, since one possible
- * extension could be using exact rational arithmetic instead of floating point
- * arithmetic, and then the value_t templating could be helpful */
+ */
 
 template < typename state_t, typename action_t, typename reward_t , typename value_t >
 class EnvironmentWrapper{
@@ -155,9 +153,11 @@ public:
     }
 
     std::pair< std::vector< value_t >, std::vector< value_t > > get_initial_bound() const {
+
         // if no predefined bounds, calculate min max payoff
         if ( config.lower_bound_init.empty() )
             return min_max_discounted_reward();
+
         // return supplied initial bound from configuration
         return std::make_pair( config.lower_bound_init, config.upper_bound_init );
     }
@@ -169,27 +169,37 @@ public:
 
         auto [ init_low, init_upp ] = get_initial_bound();
         
-        // if terminal, initialize using max payoff from avail actions
+        /* if terminal state set using the enabled actions instead of 
+         * initial bounds, if this is changed, setting of bounds for terminal
+         * SSP states has to be handled somewhere else */
         if ( is_terminal_state( s ) ) {
-
             size_t act_idx = 0;
             for ( const action_t & avail_action : get_actions( s ) ) {
                 auto act_reward = get_expected_reward( s, avail_action );
+
                 // if first action (todo maybe write this like a human)
                 if ( act_idx++ == 0 ) {
                     init_low = act_reward;
-                    init_upp = init_low;
+                    init_upp = act_reward;
                 }
+
                 else {
                     for ( size_t i = 0; i < init_low.size(); i++ ) {
                         init_low[i] = std::min( init_low[i], act_reward[i] );
-                        init_upp[i] = std::max( init_low[i], act_reward[i] );
+                        init_upp[i] = std::max( init_upp[i], act_reward[i] );
                     }
                 }
             }
+
+            // TODO change the explicit handling of SSPs to something more
+            // sensible, for now just handle it here
+            if ( config.discount_param != 1 ) {
+                value_t discount_copy = 1.0 / (1 - config.discount_param);
+                multiply( discount_copy, init_low );
+                multiply( discount_copy, init_upp );
+            }
         }
 
-        //TODO: this is wrong, transform to payoff as well!
         for ( const action_t & avail_action : get_actions( s ) ) {
             Bounds< value_t > bound( { init_low }, { init_upp } );
             set_bound( s, avail_action, std::move( bound ) );

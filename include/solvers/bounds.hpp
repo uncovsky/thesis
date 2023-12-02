@@ -17,10 +17,7 @@ class Bounds{
     Polygon< value_t > upper_bound;
 
     bool hausdorff_valid = false;
-    bool euclidean_valid = false;
-
     value_t hausdorff_dist = 0;
-    value_t euclidean_dist = 0;
 
     std::vector< Point< value_t > > furthest_points = {};
 
@@ -30,8 +27,7 @@ public:
 
     Bounds( const Bounds< value_t > &other ) : lower_bound( other.lower() )
                                              , upper_bound( other.upper() )
-                                             , hausdorff_valid( other.is_euclidean_valid() )
-                                             , euclidean_valid( other.is_hausdorff_valid() ){}
+                                             , hausdorff_valid( other.is_hausdorff_valid() ){}
 
     Bounds ( const std::vector< std::vector< value_t > > &lower_pts, 
              const std::vector< std::vector< value_t > >&upper_pts ) : lower_bound( lower_pts ),
@@ -92,10 +88,6 @@ public:
     /* 
      * methods for distance calculations / caching them 
      */ 
-    bool is_euclidean_valid() const {
-        return euclidean_valid;
-    }
-
     bool is_hausdorff_valid() const {
         return hausdorff_valid;
     }
@@ -118,32 +110,6 @@ public:
             hausdorff_distance();
         }
         return furthest_points;
-    }
-
-    // use minkowski sum trick to eval euclidean distance in linear time
-    // see, i.e. https://cp-algorithms.com/geometry/minkowski.html#distance-between-two-polygons
-    value_t distance() {
-        if ( !euclidean_valid ) {
-
-            size_t dimensions = upper_bound.get_dimension();
-            std::vector< Polygon< value_t > * > ptrs = { &lower_bound, &upper_bound };
-
-            std::vector< value_t > origin ( dimensions, 0.0 );
-
-            Polygon< value_t > result = multiple_minkowski_sum( ptrs, { -1.0, 1.0 } );
-            const auto& vertices = result.get_vertices();
-
-            value_t min_distance = euclidean_distance( vertices[0], origin );
-            for ( size_t i = 1; i < vertices.size(); i++ ) {
-                min_distance = std::min( min_distance, euclidean_distance( vertices[i], origin ) );
-            }
-
-            euclidean_dist = min_distance;
-            euclidean_valid = true;
-        }
-
-        return euclidean_dist;
-
     }
 
     /* 
