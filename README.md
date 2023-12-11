@@ -45,20 +45,20 @@ note that PRISM needs to be installed, see [github](https://github.com/prismmode
 exporting the transition
 
 
-1) Export the explicit transition files, this can be done using PRISM by
+* Export the explicit transition files, this can be done using PRISM by
 running
 
     $ prism/bin/prism modelpath --exporttrans out.tra --exporttransrewards out.trew
 
 once in the root directory of prism.
 
-2) Locate the ID of the starting state, this can be done by 
+* Locate the ID of the starting state, this can be done by 
     $ prism/bin/prism modelpath --exportlabels labels.txt
 
 and finding the index associated to the label "init".
 
 
-3) Run the solvers on these transition files. An example setup is given in include/eval_example.hpp
+* Run the solvers on these transition files. An example setup is given in include/eval_example.hpp
 
 
 
