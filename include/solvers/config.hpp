@@ -58,14 +58,6 @@ struct ExplorationSettings{
     Point< value_t > lower_bound_init;
     Point< value_t > upper_bound_init;
 
-    /* In some cases it is advantageous ( or even assumed ) that terminal
-     * states are initialized with a different lower & upper bounds
-     *
-     * for examply in all episodic problems, it is advantageous to initialize
-     * the terminal state of the MDP with U_0 = L_0 = 0, consider for example
-     * SSP problems used by BRTDP 
-     */
-    
     // filename to output logs in
     std::string filename;
 

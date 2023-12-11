@@ -80,7 +80,7 @@ void output_curve( const std::string &filename,
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=10 ){
+                    size_t repeat=5 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -222,7 +222,6 @@ void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
-    /*
     config.filename = "racetrack-ring";
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
     run_benchmark( &easy, config );
@@ -230,7 +229,6 @@ void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
     config.filename = "racetrack-hard";
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
     run_benchmark( &easy, config );
-    */
 }
 
 
@@ -295,9 +293,9 @@ void eval_frozenlake( double tau, ActionSelectionHeuristic heuristic ){
 }
 
 void eval_benchmarks( double tau, ActionSelectionHeuristic heuristic ) {
-    //eval_uav( tau , heuristic );
-    //eval_treasure( tau, heuristic );
-    //eval_frozenlake( tau, heuristic );
+    eval_uav( tau , heuristic );
+    eval_treasure( tau, heuristic );
+    eval_frozenlake( tau, heuristic );
     eval_racetrack( tau , heuristic );
 }
 

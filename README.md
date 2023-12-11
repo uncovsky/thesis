@@ -1,8 +1,8 @@
 #	Code repository for multi objective VI / BRTDP.
-## Dependencies: c++17, cmake 3.12, Eigen 3.3 (sparse matrices), gnuplot
+## Dependencies: c++17, cmake 3.12, Eigen 3.3 (sparse matrices), gnuplot (visualization)
 
-## Installing the eigen library on Debian/Ubuntu can be done by running:
-	 $ sudo apt-get install libeigen3-dev gnuplot
+## Installing the dependencies on Debian/Ubuntu can be done by running:
+	 $ sudo apt-get install libeigen3-dev gnuplot cmake
 
 ## Afterwards simply run:
 	 $ mkdir build
@@ -10,23 +10,14 @@
 	 $ cmake ..
 	 $ make
 
-###### The final binary is located at build/mo-brtdp, tests at build/mo-brtdp-tests
 
-## Current features
+## Running the benchmarks
+After building, the final binary is located at build/mo-brtdp. 
 
-* General MDP class implemented using sparse matrices.
+The binary runs all the benchmarks 5 times for SCHVI, SBPCA-DB and SBPCA-PA,
+outputting the results and statistics in out/.
 
-* Support for maximization or minimization of 2 objectives.
-
-
-* BRTDP algorithm implementation that uses both of the above, keeps lower and
-* upper bounds on objective for each state/action pair - pareto curves. Accepts
-discount parameters / precision on hausdorff distance of starting bound. 
-
-* Heuristics for BRTDP for action & successor sampling
-
-* Parser for explicit PRISM files with some additional features that can be used to load
-explicit models and use them to build the MDP for solving.
+The code used for evaluation is located in include/evaluation.hpp.
 
 ## Parser
 
@@ -46,8 +37,29 @@ in the source file.
 
 ## Using the tool
 
-No CLI for now, but running the solver on an MDP of your choice can be done as
+No CLI for now, but running the solvers on an MDP of your choice can be done as
 follows.
+
+note that PRISM needs to be installed, see [github](https://github.com/prismmodelchecker/prism).
+
+exporting the transition
+
+
+1) Export the explicit transition files, this can be done using PRISM by
+running
+
+$ prism/bin/prism modelpath --exporttrans out.tra --exporttransrewards out.trew
+
+once in the root directory of prism.
+
+2) Locate the ID of the starting state, this can be done by 
+$ prism/bin/prism modelpath --exportlabels labels.txt
+
+and finding the index associated to the label "init".
+
+
+3) Run the solvers on these transition files. An example setup is given in
+../include/eval_example.hpp
 
 
 

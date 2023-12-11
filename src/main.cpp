@@ -26,5 +26,7 @@ int main() {
     out.close();
     expl.close();
 
-    eval_parser( 10 );
+    for ( auto heuristic : { ActionSelectionHeuristic::Pareto, ActionSelectionHeuristic::Hausdorff } ) {
+        eval_benchmarks( 50, heuristic );
+    }
 }
