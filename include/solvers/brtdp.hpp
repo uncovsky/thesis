@@ -164,8 +164,6 @@ class BRTDPSolver{
      */
     TrajectoryStack sample_trajectory() {
         
-        std::ofstream out( config.filename + "_brtdp-logs.txt" , std::ios_base::app );
-
         std::stack< std::pair< action_t, state_t > > trajectory;
 
         value_t discount_pow = config.discount_param;
@@ -211,21 +209,6 @@ class BRTDPSolver{
             state = gen.sample_distribution( diff_distribution );
 
             trajectory.push( { action, state } );
-
-            // if debug output is turned on, output details of trajectory
-            if ( config.trace ) {
-                out << iter 
-                    << " : Selected action " << action 
-                    << " successor state " << state << "\n";
-
-                for ( const auto &[ succ, prob ] : transitions ) {
-                    out << "        " << succ << " with p. " << prob << ".\n";
-                }
-
-                out << "\n\n";
-            }
-
-
 
             /* 
              * check conditions for terminating sampling 
@@ -308,9 +291,6 @@ public:
 
         auto start_time = std::chrono::steady_clock::now();
 
-        std::ofstream logs( config.filename + "_brtdp-logs.txt" );
-        std::ofstream result( config.filename + "_brtdp-result.txt" );
-
         state_t starting_state = std::get< 0 > ( env.reset( 0 ) );
     
 
@@ -330,11 +310,8 @@ public:
             update_along_trajectory( trajectory, starting_state );
 
             if ( config.trace ){
-                logs << "episode #" << episode << ":\n";
-                logs << "distance: " << start_bound.hausdorff_distance() << ".\n";
-                logs << start_bound;
-
                 std::cout << "episode #" << episode << "\n.";
+                std::cout << "distance: " << start_bound.hausdorff_distance() << ".\n";
                 std::cout << start_bound;
             }
 
@@ -350,11 +327,10 @@ public:
             if ( exec_time.count() > config.max_seconds ) { break; }
 
         }
-        // env.write_exploration_logs( "../out/" + config.filename + "_brtdp" , false );
     
         auto finish_time = std::chrono::steady_clock::now();
         std::chrono::duration< double > exec_time = finish_time - start_time;
-        VerificationResult< value_t > res{  env.get_update_num() // num of updates
+        VerificationResult< value_t > res{ env.get_update_num() // num of updates
                                        , start_bound.hausdorff_distance() < config.precision // bool converged
                                        , start_bound 
                                        , exec_time.count()

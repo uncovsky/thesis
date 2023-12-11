@@ -87,7 +87,7 @@ struct ExplorationSettings{
 
 template < typename value_t >
 struct VerificationResult {
-    
+
     // number of BRTDP state-action updates executed
     size_t update_number;
 

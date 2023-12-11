@@ -16,7 +16,8 @@
 
 * General MDP class implemented using sparse matrices.
 
-* Support for 1 or 2 reward dimensions / pareto curves.
+* Support for maximization or minimization of 2 objectives.
+
 
 * BRTDP algorithm implementation that uses both of the above, keeps lower and
 * upper bounds on objective for each state/action pair - pareto curves. Accepts
@@ -26,14 +27,6 @@ discount parameters / precision on hausdorff distance of starting bound.
 
 * Parser for explicit PRISM files with some additional features that can be used to load
 explicit models and use them to build the MDP for solving.
-
-## Code structure
-
-* Pareto curves, hausdorff distance, convex hull - etc. - /include/geometry/
-* MDPS, environment interaction - /include/models/
-* BRTDP, heuristics - /include/solvers/brtdp.hpp
-* PRISM parser - /include/parser.hpp & /src/parser.cpp
-
 
 ## Parser
 
@@ -56,23 +49,5 @@ in the source file.
 No CLI for now, but running the solver on an MDP of your choice can be done as
 follows.
 
-1. Create a transition file and ( possibly multiple ) transition reward files
-	 that describe your MDP in the build directory.
-2. Use the test_brtdp() function provided in the main source file.
-3. Resulting pareto curves are output as text files in the /out directory
-4. Run gnuplot -p plotscript.p for a simple visualization
 
-## Changes made to the algorithm
-Since stochastic policies are considered as well, I've changed the algorithm to
-only keep vertices of the convex hull after every update, see section *Update
-step* in the main pdf. 
-
-This is advantageous for performance, since it helps
-eliminate unnecessary ( linearly dependent, etc. ) points during the updates.
-The proofs should remain unaffected by this change. To give an example:
-![Example MDP](mdp_example.png "Example MDP").
-
-Computing the pareto front(s) of this simple MDP when using a high discount
-parameter was computationally infeasible without eliminating dependent points. 
-Moving the convex hull operator in the update is enough to overcome this.
 

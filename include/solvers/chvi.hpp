@@ -69,8 +69,6 @@ public:
     VerificationResult< value_t > solve() {
 
         auto start_time = std::chrono::steady_clock::now();
-        std::ofstream logs( config.filename + "_chvi-logs.txt" );
-        std::ofstream result( config.filename + "_chvi-result.txt" );
 
         size_t sweeps = 0;
         reachable_states.clear();
@@ -82,7 +80,6 @@ public:
         while ( env.get_state_bound( starting_state ).hausdorff_distance() >= config.precision ){
 
             if ( config.trace ) {
-                logs << "Sweep number: " << sweeps << ".\n";
                 std::cout << "Sweep number: " << sweeps << ".\n";
                 std::cout <<  env.get_state_bound( starting_state ).hausdorff_distance() << ".\n";
                 std::cout <<  env.get_state_bound( starting_state ) << ".\n";

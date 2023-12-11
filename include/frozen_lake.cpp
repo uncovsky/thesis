@@ -11,15 +11,15 @@ std::map< Coordinates, double > FrozenLake::get_transition( const Coordinates &p
     }
     
     if ( prob_of_slipping == 0 ) {
-        return { std::make_pair( pos + dir_to_vec( dir ) , 1 - prob_of_slipping ) };
+        return { std::make_pair( pos + dir_to_vec( dir ) , 1.0 ) };
     } 
 
     std::vector< Direction > slip_directions = valid_perpendicular( pos, dir, height, width );
 
     // divide by # of possible slips
-    double distr_prob = prob_of_slipping / slip_directions.size();
+    double distr_prob = ( 1 - prob_of_slipping ) / slip_directions.size();
 
-    std::map< Coordinates, double > res = { std::make_pair( pos + dir_to_vec( dir ) , 1 - prob_of_slipping ) };
+    std::map< Coordinates, double > res = { std::make_pair( pos + dir_to_vec( dir ) , prob_of_slipping ) };
 
     for ( Direction slip : slip_directions ){
         res[ pos + dir_to_vec( slip ) ] = distr_prob;
@@ -54,7 +54,7 @@ std::vector< double > FrozenLake::get_reward( const Coordinates &pos, const Dire
 }
 
 std::pair< std::vector< double >, std::vector< double > > FrozenLake::reward_range() const {
-    std::vector< double > min_vec = { 0, 0 }, max_vec = { 1, 0 };
+    std::vector< double > min_vec = { 0, 0 }, max_vec = { 1, 1 };
     return std::make_pair( min_vec, max_vec );
 }
 
@@ -102,7 +102,9 @@ void FrozenLake::set_hyperparams( double prob ) {
     prob_of_slipping = prob;
 }
 
-FrozenLake::FrozenLake() : height( 9 )
+FrozenLake::FrozenLake() : 
+                         prob_of_slipping( 0.33 )
+                         , height( 9 )
                          , width( 9 )
                          , pits( { Coordinates( 6, 0 )
                                  , Coordinates( 7, 1 )

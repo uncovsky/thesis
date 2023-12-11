@@ -80,7 +80,7 @@ void output_curve( const std::string &filename,
 template < typename state_t, typename action_t, typename value_t >
 void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *env,
                     const ExplorationSettings< value_t > &config,
-                    size_t repeat=5 ){
+                    size_t repeat=10 ){
 
 
     EnvironmentWrapper< state_t, action_t, std::vector< value_t >, value_t > envw( env );
@@ -115,7 +115,7 @@ void run_benchmark( Environment< state_t, action_t, std::vector< value_t > >  *e
 
     out << config.filename << ";" << chvi_logs.explored_mean << ";" << brtdp_logs.time_mean << ";" << brtdp_logs.time_std << ";";
     out << brtdp_logs.updates_mean << ";" << brtdp_logs.updates_std << ";";
-    out << chvi_logs.time_mean << ";" << chvi_logs.updates_mean << "\n";
+    out << chvi_logs.time_mean << ";" << chvi_logs.time_std << ";" << chvi_logs.updates_mean << "\n";
     expl << config.filename << ";" << chvi_logs.explored_mean << ";";
     expl << brtdp_logs.explored_mean << ";" << brtdp_logs.explored_std << ";";
     expl << brtdp_logs.didnt_converge << ";" << chvi_logs.didnt_converge << "\n";
@@ -144,48 +144,39 @@ void eval_uav( double tau, ActionSelectionHeuristic heuristic ){
                       },
                       0 );
 
-    auto uav20 = parser.parse_model( "../benchmarks/uav/uav20.tra",
-                      {
-                      "../benchmarks/uav/uav201.trew",
-                      "../benchmarks/uav/uav202.trew"
-                      },
-                      0 );
 
-
-    auto ptaskgraph5 = parser.parse_model( "../benchmarks/pareto_taskgraph/taskgraph5.tra",
-                      {
-                      "../benchmarks/pareto_taskgraph/taskgraph51.trew",
-                      "../benchmarks/pareto_taskgraph/taskgraph52.trew"
+    auto ptaskgraph5 = parser.parse_model( "../benchmarks/taskgraph/taskgraph5.tra",
+            {
+                      "../benchmarks/taskgraph/taskgraph52.trew",
+                      "../benchmarks/taskgraph/taskgraph51.trew"
                       },
                       0 );
     
-    auto teamform2 = parser.parse_model( "../benchmarks/teamform/teamform2.tra",
-                                         {
-                                            "../benchmarks/teamform/teamform21.trew",
-                                            "../benchmarks/teamform/teamform22.trew"
-                                         }, 0);
-
     auto teamform3 = parser.parse_model( "../benchmarks/teamform/teamform3.tra",
                                          {
                                             "../benchmarks/teamform/teamform31.trew",
                                             "../benchmarks/teamform/teamform32.trew"
                                          }, 0 );
     
-    auto taskgraph30 = parser.parse_model( "../benchmarks/taskgraph/taskgraph30.tra",
+    auto taskgraph30 = parser.parse_model( "../benchmarks/taskgraph2/taskgraph30.tra",
                       {
-                      "../benchmarks/taskgraph/taskgraph301.trew",
-                      "../benchmarks/taskgraph/taskgraph302.trew"
+                      "../benchmarks/taskgraph2/taskgraph301.trew",
+                      "../benchmarks/taskgraph2/taskgraph302.trew"
                       },
                       0 );
 
     // basic config for benchmarks
     ExplorationSettings< double > config;
+    config.trace = false;
+    
+    // no limit on depth or episodes
     config.max_depth = 0;
     config.max_episodes = 0;
-    config.trace = false;
+    config.max_seconds = 300;
+
     config.precision = 0.01;
     config.depth_constant = tau;
-    config.max_seconds = 90;
+    config.discount_param = 0.99;
 
     // use default init
     config.lower_bound_init = {};
@@ -193,35 +184,15 @@ void eval_uav( double tau, ActionSelectionHeuristic heuristic ){
     config.action_heuristic = heuristic;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
 
-    // 0.99 gamma for uav
-    config.discount_param = 0.99;
-
     config.filename = "uav5";
     run_benchmark( &uav5, config );
 
-    config.filename = "uav20";
-    run_benchmark( &uav20, config );
-
-    // 0.9 gamma for all other benchmarks & lower time
-    config.discount_param = 0.9;
-
-    config.filename = "teamform2";
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MAXIMIZE };
 
-    /*
-    config.lower_bound_init = { 0, 0 };
-    config.upper_bound_init = { 20, 20 };
-    */
-    run_benchmark( &teamform2, config );
     config.filename = "teamform3";
     run_benchmark( &teamform3, config );
 
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
-
-    /*
-    config.lower_bound_init = { -20, -20 };
-    config.upper_bound_init = { 0, 0 };
-    */
 
     config.filename = "pareto_taskgraph5";
     run_benchmark( &ptaskgraph5, config );
@@ -235,8 +206,8 @@ void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
     ExplorationSettings< double > config;
 
     config.action_heuristic = heuristic;
-    config.max_depth = 1000;
-    config.max_seconds = 300;
+    config.max_depth = 100;
+    config.max_seconds = 600;
     config.max_episodes = 0;
     config.directions = { OptimizationDirection::MINIMIZE, OptimizationDirection::MINIMIZE };
     config.discount_param = 1;
@@ -247,10 +218,11 @@ void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
 
     Racetrack easy;
     config.filename = "racetrack-easy";
-    config.trace = false;
+    config.trace = true;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
+    /*
     config.filename = "racetrack-ring";
     easy.from_file("../benchmarks/racetracks/racetrack-ring.track");
     run_benchmark( &easy, config );
@@ -258,15 +230,7 @@ void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
     config.filename = "racetrack-hard";
     easy.from_file("../benchmarks/racetracks/racetrack-hard.track");
     run_benchmark( &easy, config );
-    /*
-    config.filename = "racetrack-hard-1000";
-    config.max_depth = 1000;
-    run_benchmark( &easy, config, 2 );
-    config.filename = "racetrack-hard-10000";
-    config.max_depth = 10000;
-    run_benchmark( &easy, config, 2 );
     */
-
 }
 
 
@@ -275,7 +239,7 @@ void eval_treasure( double tau, ActionSelectionHeuristic heuristic ){
     ExplorationSettings< double > config;
     config.action_heuristic = heuristic;
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
-    config.max_depth = 50;
+    config.max_depth = 0;
     // until convergence
     config.max_episodes = 0;
     config.depth_constant = tau;
@@ -297,10 +261,11 @@ void eval_treasure( double tau, ActionSelectionHeuristic heuristic ){
 void eval_frozenlake( double tau, ActionSelectionHeuristic heuristic ){
     ExplorationSettings< double > config;
     config.action_heuristic = heuristic;
-    config.max_depth = 100;
-    config.max_episodes = 100000;
+    config.max_depth = 0;
+    config.max_episodes = 0;
     config.discount_param = 0.95;
-    config.trace = false;
+    config.max_seconds = 300;
+    config.trace = true;
     config.precision = 0.01;
     config.depth_constant = tau;
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
@@ -310,9 +275,6 @@ void eval_frozenlake( double tau, ActionSelectionHeuristic heuristic ){
 
     run_benchmark( &lake, config );
 
-    PRNG gen;
-    std::set< Coordinates > randpits;
-    config.discount_param = 0.95;
     FrozenLake lake2( 15, 15, {
                        Coordinates(1, 5),
                        Coordinates(1, 8),
@@ -327,27 +289,15 @@ void eval_frozenlake( double tau, ActionSelectionHeuristic heuristic ){
                        Coordinates(9, 15),
                        Coordinates(10, 4),
                        Coordinates(13, 7),
-                       Coordinates(15, 22),
-                       Coordinates(16, 6),
-                       Coordinates(16, 10),
-                       Coordinates(19, 5),
-                       Coordinates(19, 7),
-                       Coordinates(19, 24),
-                       Coordinates(20, 8),
-                       Coordinates(22, 9),
-                       Coordinates(23, 1),
-                       Coordinates(23, 19),
-                       Coordinates(24, 21),
-                       Coordinates(24, 8)
-            }, 0.3 );
+            }, 0.33 );
     config.filename = "lake-hard";
     run_benchmark( &lake2, config );
 }
 
-void evaluate_benchmarks( double tau, ActionSelectionHeuristic heuristic ) {
-    // eval_treasure( tau, heuristic );
-    eval_uav( tau , heuristic );
-    // eval_racetrack( tau , heuristic );
-    // eval_frozenlake( tau, heuristic );
+void eval_benchmarks( double tau, ActionSelectionHeuristic heuristic ) {
+    //eval_uav( tau , heuristic );
+    //eval_treasure( tau, heuristic );
+    //eval_frozenlake( tau, heuristic );
+    eval_racetrack( tau , heuristic );
 }
 

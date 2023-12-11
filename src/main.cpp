@@ -10,6 +10,8 @@
 #include "utils/prng.hpp"
 
 #include "evaluation.hpp"
+#include "parser_evaluation.hpp"
+
 #include "parser.hpp"
 #include <iostream>
 
@@ -24,8 +26,5 @@ int main() {
     out.close();
     expl.close();
 
-    for ( double tau : { 50 } ) {
-        for ( ActionSelectionHeuristic heuristic : { ActionSelectionHeuristic::Hausdorff, ActionSelectionHeuristic::Pareto } )
-        evaluate_benchmarks( tau, heuristic );
-    }
+    eval_parser( 10 );
 }
