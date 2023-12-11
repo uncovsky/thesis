@@ -33,7 +33,7 @@ It is also possible to supply more than one dimension of rewards in one file for
 	+ 1 0 2 6 3 - transition has reward (6, 3)
 
 More details on the parser ( all the things that are checked, etc. ) are given
-in the source file.
+in the source file "include/parser.hpp"
 
 ## Using the tool
 
@@ -48,18 +48,17 @@ exporting the transition
 1) Export the explicit transition files, this can be done using PRISM by
 running
 
-	$ prism/bin/prism modelpath --exporttrans out.tra --exporttransrewards out.trew
+    $ prism/bin/prism modelpath --exporttrans out.tra --exporttransrewards out.trew
 
 once in the root directory of prism.
 
 2) Locate the ID of the starting state, this can be done by 
-	$ prism/bin/prism modelpath --exportlabels labels.txt
+    $ prism/bin/prism modelpath --exportlabels labels.txt
 
 and finding the index associated to the label "init".
 
 
-3) Run the solvers on these transition files. An example setup is given in
-	../include/eval_example.hpp
+3) Run the solvers on these transition files. An example setup is given in include/eval_example.hpp
 
 
 
