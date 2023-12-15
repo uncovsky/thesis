@@ -46,11 +46,11 @@ note that PRISM needs to be installed, see [github](https://github.com/prismmode
 * Export the explicit transition files, this can be done using PRISM by
 running the following in the root directory of PRISM
 
-    $ prism/bin/prism modelpath --exporttrans out.tra --exporttransrewards out.trew
+    $ prism/bin/prism MODEL_PATH --exporttrans out.tra --exporttransrewards out.trew
 
 
 * Locate the ID of the starting state, this can be done by 
-    $ prism/bin/prism modelpath --exportlabels labels.txt
+    $ prism/bin/prism MODEL_PATH --exportlabels labels.txt
 		 , and looking at the index associated with the label "init", which is usually 0
 
 
