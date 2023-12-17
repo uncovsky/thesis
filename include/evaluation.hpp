@@ -167,7 +167,7 @@ void eval_uav( double tau, ActionSelectionHeuristic heuristic ){
 
     // basic config for benchmarks
     ExplorationSettings< double > config;
-    config.trace = true;
+    config.trace = false;
     
     // no limit on depth or episodes
     config.max_depth = 0;
@@ -218,7 +218,7 @@ void eval_racetrack( double tau, ActionSelectionHeuristic heuristic ){
 
     Racetrack easy;
     config.filename = "racetrack-easy";
-    config.trace = true;
+    config.trace = false;
     easy.from_file("../benchmarks/racetracks/racetrack-easy.track");
     run_benchmark( &easy, config );
 
@@ -263,7 +263,7 @@ void eval_frozenlake( double tau, ActionSelectionHeuristic heuristic ){
     config.max_episodes = 0;
     config.discount_param = 0.95;
     config.max_seconds = 300;
-    config.trace = true;
+    config.trace = false;
     config.precision = 0.01;
     config.depth_constant = tau;
     config.directions = { OptimizationDirection::MAXIMIZE, OptimizationDirection::MINIMIZE };
