@@ -177,7 +177,7 @@ public:
             for ( const action_t & avail_action : get_actions( s ) ) {
                 auto act_reward = get_expected_reward( s, avail_action );
 
-                // if first action (todo maybe write this like a human)
+                // if first action
                 if ( act_idx++ == 0 ) {
                     init_low = act_reward;
                     init_upp = act_reward;
@@ -191,8 +191,8 @@ public:
                 }
             }
 
-            // TODO change the explicit handling of SSPs to something more
-            // sensible, for now just handle it here
+            // TODO: Perhaps handle the SSP case more explicitly in config,
+            // this is not the nicest
             if ( config.discount_param != 1 ) {
                 value_t discount_copy = 1.0 / (1 - config.discount_param);
                 multiply( discount_copy, init_low );

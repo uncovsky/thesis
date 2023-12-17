@@ -120,7 +120,6 @@ std::vector< Direction > DeepSeaTreasure::get_actions( const TreasureState &s ) 
     std::vector< Direction > result;
     for ( auto dir : { Direction::UP, Direction::DOWN, Direction::LEFT, Direction::RIGHT } ) {
 
-        //TODO: make this more sensible
         if ( inacessible_squares.find( s.position + dir_to_vec( dir ) ) != inacessible_squares.end() ) {
             continue;
         }

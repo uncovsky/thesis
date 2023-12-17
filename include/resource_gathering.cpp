@@ -46,7 +46,8 @@ ResourceGathering::reward_t ResourceGathering::get_reward( const ResourceState &
             rew[ 0 ] += pos.flags[ 0 ] * prob;
             rew[ 1 ] += pos.flags[ 1 ] * prob;
 
-            //TODO: will need to adjust this for attacks
+            //TODO: If this is adjusted for three objectives later, need to
+            //take into account adversary attacks in this function.
         }
     }
 
