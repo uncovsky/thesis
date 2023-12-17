@@ -167,7 +167,7 @@ void eval_uav( double tau, ActionSelectionHeuristic heuristic ){
 
     // basic config for benchmarks
     ExplorationSettings< double > config;
-    config.trace = false;
+    config.trace = true;
     
     // no limit on depth or episodes
     config.max_depth = 0;

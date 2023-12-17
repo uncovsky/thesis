@@ -28,5 +28,7 @@ int main() {
 
     for ( auto heuristic : { ActionSelectionHeuristic::Pareto, ActionSelectionHeuristic::Hausdorff } ) {
         eval_benchmarks( 50, heuristic );
+        out << "\n";
+        expl << "\n";
     }
 }

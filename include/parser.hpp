@@ -125,8 +125,6 @@ struct TripletList {
 
 class PrismParser {
 
-    set[set[int]]
-
     // map each state to its transitions, later build matrix
     std::map< size_t, TripletList > transition_info;
 
