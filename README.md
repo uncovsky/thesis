@@ -55,13 +55,3 @@ running the following in the root directory of PRISM
 
 
 * Run the solvers on these transition files. An example setup is given in include/eval_example.hpp
-
-
-## Visualization
-
-The results can be visualized by utilizing the gnuplot script in
-out/visualization
-
-This can be done by running $ gnuplot -p plotscript.p, which visualizes the
-contents of the file curve.txt in the directory.
-
